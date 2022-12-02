@@ -23,6 +23,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+
 // Exemplo de uso da pilha
 
 // stack<string> pilha;
@@ -47,8 +48,10 @@
 #define FD_DEVICE "./myext2image.img"
 #define EXT2_SUPER_MAGIC 0xEF53 /* the floppy disk device */
 #define BLOCK_OFFSET(block) (BASE_OFFSET + (block - 1) * block_size)
+#define block_size (1024 << super.s_log_block_size)
 
-static unsigned int block_size = 0; /* block size (to be calculated) */
+static struct ext2_super_block super;
+int fd;
 
 static void read_inode(int fd, int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
 {
@@ -62,7 +65,7 @@ static void read_dir(int fd, const struct ext2_inode *inode, const struct ext2_g
 	void *block;
 	char nometmp[256];
 	char nomearq[256];
-	(*valorInode) = -1;
+	(*valorInode) = -1; //BUG: UNSIGNED INT RECEBENDO -1, TEM QUE VER OQ ACONTECE
 	if (S_ISDIR(inode->i_mode))
 	{
 		struct ext2_dir_entry_2 *entry;
@@ -187,7 +190,7 @@ void leArquivoPorNome(int fd, struct ext2_inode *inode, struct ext2_group_desc *
 	}*/
 }
 
-void info(int fd, struct ext2_super_block *super)
+void info()
 {
 	printf("Reading super-block from device " FD_DEVICE ":\n"
 		   "Volume name.....: %s\n"
@@ -202,51 +205,52 @@ void info(int fd, struct ext2_super_block *super)
 		   "Groups inodes...: %u inodes\n"
 		   "Inodetable size.: %lu blocks\n",
 
-		   super->s_volume_name,
-		   (super->s_blocks_count * block_size),
-		   (super->s_free_blocks_count * block_size) / 1024,
+		   super.s_volume_name,
+		   (super.s_blocks_count * block_size),
+		   (super.s_free_blocks_count * block_size) / 1024,
 		   // #BUG_CONHECIDO: é mostrado mais Free space do que o Campiolo mostra
-		   super->s_free_inodes_count,
-		   super->s_free_blocks_count,
+		   super.s_free_inodes_count,
+		   super.s_free_blocks_count,
 		   block_size,
-		   super->s_inode_size,
-		   (super->s_blocks_count / super->s_blocks_per_group), // quantos / (quantos por grupo)
+		   super.s_inode_size,
+		   (super.s_blocks_count / super.s_blocks_per_group), // quantos / (quantos por grupo)
 		   /* OBS acima: essa divisão pode retornar um a menos caso o ultimo grupo não tenha
 		   exatamente todo o número de blocos certo, por causa de uma imagem não divisivel pelo tamanho.
 		   #BUG_CONHECIDO: quando documentar bugs conhecidos, colocar esse.
 		   */
-		   super->s_blocks_per_group,
-		   super->s_inodes_per_group,
-		   (super->s_inodes_per_group / (block_size / sizeof(struct ext2_inode))));
+		   super.s_blocks_per_group,
+		   super.s_inodes_per_group,
+		   (super.s_inodes_per_group / (block_size / sizeof(struct ext2_inode))));
 
 	/*
 	infos nao uteis pro comando
-	super->s_inodes_count,
-	super->s_blocks_count,
-	super->s_r_blocks_count, //  reserved blocks count
-	super->s_first_data_block,
+	super.s_inodes_count,
+	super.s_blocks_count,
+	super.s_r_blocks_count, //  reserved blocks count
+	super.s_first_data_block,
 	block_size,
-	super->s_creator_os,
-	super->s_first_ino, // first non-reserved inode
-	super->s_magic);
+	super.s_creator_os,
+	super.s_first_ino, // first non-reserved inode
+	super.s_magic);
 	*/
 }
 
-int main(void)
+void funct_cat(const struct ext2_inode *inode, const struct ext2_group_desc *group, unsigned int *valorInode, char* nome)
 {
-	printf("\nTeste\n");
+	read_dir(fd, &inode, &group, &valorInode, nome);
+	printf("Inode:%u", valorInode);
+	int block_group = (((int) valorInode - 1) / super.s_inodes_per_group);
+	trocaGrupo(fd, &valorInode, &group, super.s_inodes_per_group, &group);
+	unsigned int index = ((int) valorInode) % super.s_inodes_per_group;
 
-	struct ext2_super_block super;
-	struct ext2_group_desc group;
-	struct ext2_inode inode;
-	int grupoAtual = 0;
-	int fd;
-	int i;
-	char *buffer;
+	read_inode(fd, index, &group, &inode);
+}
 
+void init_super(int *fd)
+{
 	/* open floppy device */
 
-	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0)
+	if ((*fd = open(FD_DEVICE, O_RDONLY)) < 0)
 	{
 		perror(FD_DEVICE);
 		exit(1); /* error while opening the floppy device */
@@ -254,8 +258,8 @@ int main(void)
 
 	/* read super-block */
 
-	lseek(fd, BASE_OFFSET, SEEK_SET);
-	read(fd, &super, sizeof(super));
+	lseek(*fd, BASE_OFFSET, SEEK_SET);
+	read(*fd, &super, sizeof(super));
 	// close(fd);
 
 	if (super.s_magic != EXT2_SUPER_MAGIC)
@@ -264,7 +268,18 @@ int main(void)
 		exit(1);
 	}
 
-	block_size = 1024 << super.s_log_block_size;
+}
+
+int main(void)
+{
+	printf("\nTeste\n");
+
+	struct ext2_group_desc group;
+	struct ext2_inode inode;
+	int grupoAtual = 0;
+	int fd;
+	int i;
+	char *buffer;
 
 	// Exibe informações do disco e do sistema de arquivos
 	info(fd, &super);
