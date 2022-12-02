@@ -164,6 +164,8 @@ void leArquivoPorNome(int fd, struct ext2_inode *inode, struct ext2_group_desc *
 
 int main(void)
 {
+	printf("\nTeste\n");
+	
 	struct ext2_super_block super;
 	struct ext2_group_desc group;
 	struct ext2_inode inode;
