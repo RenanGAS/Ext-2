@@ -51,16 +51,16 @@
 #define block_size (1024 << super.s_log_block_size)
 
 static struct ext2_super_block super;
-int fd;
+static int fd;
 
-static void read_inode(int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
+void read_inode(int inode_no, const struct ext2_group_desc *group, struct ext2_inode *inode)
 {
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_table) + (inode_no - 1) * sizeof(struct ext2_inode),
 		  SEEK_SET);
 	read(fd, inode, sizeof(struct ext2_inode));
 } /* read_inode() */
 
-static void read_dir(const struct ext2_inode *inode, const struct ext2_group_desc *group, unsigned int *valorInode, char *nome)
+void read_dir(const struct ext2_inode *inode, const struct ext2_group_desc *group, unsigned int *valorInode, char *nome)
 {
 	void *block;
 	char nometmp[256];
@@ -121,11 +121,11 @@ static void read_dir(const struct ext2_inode *inode, const struct ext2_group_des
 	}
 } /* read_dir() */
 
-void trocaGrupo(unsigned int *valorinode, struct ext2_group_desc *group, int *grupoAtual)
+void trocaGrupo(unsigned int *valorInode, struct ext2_group_desc *group, int *grupoAtual)
 {
 	printf("\n--- TROCANDO O GRUPO ---\n");
-	printf("INODE: %u", *valorinode);
-	unsigned int block_group = ((*valorinode) - 1) / super.s_inodes_per_group;
+	printf("INODE: %u", *valorInode);
+	unsigned int block_group = ((*valorInode) - 1) / super.s_inodes_per_group;
 	if (block_group != (*grupoAtual))
 	{
 		printf("trocou de grupo");
@@ -190,7 +190,7 @@ void leArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, c
 	}*/
 }
 
-void info()
+static void funct_info()
 {
 	printf("Reading super-block from device " FD_DEVICE ":\n"
 		   "Volume name.....: %s\n"
@@ -235,13 +235,12 @@ void info()
 	*/
 }
 
-void funct_cat(const struct ext2_inode *inode, const struct ext2_group_desc *group, unsigned int *valorInode, char* nome)
+static void funct_cd(const struct ext2_inode *inode, const struct ext2_group_desc *group, unsigned int *valorInode, char* nome)
 {
 	read_dir(&inode, &group, &valorInode, nome);
 	printf("Inode:%u", valorInode);
 	trocaGrupo(&valorInode, &group, &group);
 	unsigned int index = ((int) valorInode) % super.s_inodes_per_group;
-
 	read_inode(index, &group, &inode);
 }
 
@@ -269,6 +268,12 @@ void init_super()
 
 }
 
+
+static void funct_attr(char* nome)
+{
+
+}
+
 int main(void)
 {
 	printf("\nTeste\n");
@@ -278,7 +283,7 @@ int main(void)
 	int grupoAtual = 0;
 
 	// Exibe informações do disco e do sistema de arquivos
-	info();
+	funct_info();
 
 	printf("\n---LEITURA DO PRIMEIRO GRUPO---\n");
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
