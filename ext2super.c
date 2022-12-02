@@ -23,6 +23,26 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
+// Exemplo de uso da pilha
+
+// stack<string> pilha;
+// pilha.push("0");
+// pilha.push("1");
+// pilha.push("2");
+// pilha.push("3");
+// cout << pilha.top() << endl;
+// pilha.pop();
+// cout << pilha.top() << endl;
+// for (int i = 0; i <= pilha.size() + 1; i++)
+// {
+// 	pilha.pop();
+// 	if (pilha.empty())
+// 	{
+// 		cout << "Fiquei vazia na iteração: " << i + 1 << endl;
+// 		break;
+// 	}
+// }
+
 #define BASE_OFFSET 1024 /* locates beginning of the super block (first group) */
 #define FD_DEVICE "./myext2image.img"
 #define EXT2_SUPER_MAGIC 0xEF53 /* the floppy disk device */
@@ -118,7 +138,7 @@ void printaArquivo(int fd, const struct ext2_inode *inode)
 	printf("\nTENTANDO LER O AQRUIVO AQUI\n");
 	char *buffer = malloc(sizeof(char) * block_size);
 	int tempSize = inode->i_size;
-	//printf("\n---Print do arquivo---\n");
+	// printf("\n---Print do arquivo---\n");
 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
 	read(fd, buffer, block_size);
 	for (int i = 0; (tempSize) > 0; i++)
@@ -136,9 +156,9 @@ void leArquivoPorNome(int fd, struct ext2_inode *inode, struct ext2_group_desc *
 	char *nomeArquivo = nome;
 	struct ext2_group_desc *grupoTemp = malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode *inodeTemp = malloc(sizeof(struct ext2_inode));
-	memcpy(grupoTemp,group,sizeof(struct ext2_group_desc));
-	memcpy(inodeTemp,inode,sizeof(struct ext2_inode));
-	//grupoTemp = group;
+	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
+	memcpy(inodeTemp, inode, sizeof(struct ext2_inode));
+	// grupoTemp = group;
 	read_dir(fd, inodeTemp, grupoTemp, &valorInodeTmp, nomeArquivo);
 	if (valorInodeTmp == -1)
 	{
@@ -149,7 +169,7 @@ void leArquivoPorNome(int fd, struct ext2_inode *inode, struct ext2_group_desc *
 	trocaGrupo(fd, &valorInodeTmp, grupoTemp, inodesPorGrupo, grupoAtual);
 	// printf("TROCOU DE GRUPO");
 	read_inode(fd, valorInodeTmp, grupoTemp, inodeTemp);
-	
+
 	printaArquivo(fd, inodeTemp);
 	free(grupoTemp);
 	free(inodeTemp);
@@ -214,98 +234,98 @@ void info(int fd, struct ext2_super_block *super)
 
 int shell()
 {
-    char *entrada = malloc(100 * sizeof(char));
-    char **argumentos = malloc(10 * sizeof(char *));
-    char *token; //Cada parte do comando;
-    int numArg = 0; // Número de partes do comando;
+	char *entrada = malloc(100 * sizeof(char));
+	char **argumentos = malloc(10 * sizeof(char *));
+	char *token;	// Cada parte do comando;
+	int numArg = 0; // Número de partes do comando;
 
-    while (1)
-    {
-        numArg = 0;
+	while (1)
+	{
+		numArg = 0;
 
-        entrada = readline("[nEXT2Shell]>>> ");
-        if (!strcmp(entrada, ""))//Reinicia o processo de entrada se nenhum comando for digitado;
-        {
-            continue;
-        }
+		entrada = readline("[nEXT2Shell]>>> ");
+		if (!strcmp(entrada, "")) // Reinicia o processo de entrada se nenhum comando for digitado;
+		{
+			continue;
+		}
 
-        entrada[strcspn(entrada, "\n")] = 0;//Consome o '\n' que o readline coloca;
-        add_history(entrada);//Acrescenta o comando no histórico;
+		entrada[strcspn(entrada, "\n")] = 0; // Consome o '\n' que o readline coloca;
+		add_history(entrada);				 // Acrescenta o comando no histórico;
 
-        token = strtok(entrada, " ");
-        if (!(strcasecmp(token, "exit")))//Sai quando for digitado exit;
-        {
-            return 0;
-        }
-        else if (!(strcasecmp(token, "cd")))//Faz funcionar o cd;
-        {
-            token = strtok(NULL, " ");
-            chdir(token);//Muda o diretório;
-            continue;
-        }
-//==============================================================
-//Esse pedaço separa as partes do comando
-        argumentos[numArg] = token;
-        numArg++;
-        while (token != NULL)
-        {
-            token = strtok(NULL, " ");
+		token = strtok(entrada, " ");
+		if (!(strcasecmp(token, "exit"))) // Sai quando for digitado exit;
+		{
+			return 0;
+		}
+		else if (!(strcasecmp(token, "cd"))) // Faz funcionar o cd;
+		{
+			token = strtok(NULL, " ");
+			chdir(token); // Muda o diretório;
+			continue;
+		}
+		//==============================================================
+		// Esse pedaço separa as partes do comando
+		argumentos[numArg] = token;
+		numArg++;
+		while (token != NULL)
+		{
+			token = strtok(NULL, " ");
 
-            argumentos[numArg] = token;
-            numArg++;
-        }
-//==============================================================
-        if (!(strcmp(argumentos[numArg - 2], "&")))//Verifica se foi digitado o '&';
-        {
-            argumentos[numArg - 2] = NULL;
-            numArg--;
-            pid_t pid = fork();
-            if (pid == 0)
-            {
-                if (execvp(argumentos[0], argumentos) == -1)
-                {
-                    printf("\nErro: Comando nao suportado\n");
-                    exit(1);
-                }
+			argumentos[numArg] = token;
+			numArg++;
+		}
+		//==============================================================
+		if (!(strcmp(argumentos[numArg - 2], "&"))) // Verifica se foi digitado o '&';
+		{
+			argumentos[numArg - 2] = NULL;
+			numArg--;
+			pid_t pid = fork();
+			if (pid == 0)
+			{
+				if (execvp(argumentos[0], argumentos) == -1)
+				{
+					printf("\nErro: Comando nao suportado\n");
+					exit(1);
+				}
 
-                for (int i = 0; i < numArg; i++)//Limpa o vetor dos pedaços do comando
-                {
-                    free(argumentos[i]);
-                    argumentos[i] = NULL;
-                }
-            }
-            else
-            {
-                printf("\n");
-                continue;
-            }
-        }
+				for (int i = 0; i < numArg; i++) // Limpa o vetor dos pedaços do comando
+				{
+					free(argumentos[i]);
+					argumentos[i] = NULL;
+				}
+			}
+			else
+			{
+				printf("\n");
+				continue;
+			}
+		}
 
-        pid_t pid = fork();
+		pid_t pid = fork();
 
-        if (pid == 0)
-        {
-            if (execvp(argumentos[0], argumentos) == -1)
-            {
-                printf("\nErro: Comando nao suportado\n");
-                exit(1);
-            }
+		if (pid == 0)
+		{
+			if (execvp(argumentos[0], argumentos) == -1)
+			{
+				printf("\nErro: Comando nao suportado\n");
+				exit(1);
+			}
 
-            for (int i = 0; i < numArg; i++)
-            {
-                free(argumentos[i]);
-                argumentos[i] = NULL;
-            }
-        }
+			for (int i = 0; i < numArg; i++)
+			{
+				free(argumentos[i]);
+				argumentos[i] = NULL;
+			}
+		}
 
-        int estado;
-        struct rusage ru;
-        pid_t pid_filho = wait4(pid, &estado, 0, &ru);//Espera o filho executar;
+		int estado;
+		struct rusage ru;
+		pid_t pid_filho = wait4(pid, &estado, 0, &ru); // Espera o filho executar;
 
-        printf("\n");
-    }
+		printf("\n");
+	}
 
-    return 0;
+	return 0;
 }
 
 int main(void)
