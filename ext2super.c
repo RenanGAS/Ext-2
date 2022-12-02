@@ -162,10 +162,55 @@ void leArquivoPorNome(int fd, struct ext2_inode *inode, struct ext2_group_desc *
 	}*/
 }
 
+void info(int fd, struct ext2_super_block *super)
+{
+	printf("Reading super-block from device " FD_DEVICE ":\n"
+		   "Volume name.....: %s\n"
+		   "Image size......: %u bytes\n"
+		   "Free space......: %u KiB\n"
+		   "Free inodes.....: %u\n"
+		   "Free blocks.....: %u\n"
+		   "Block size......: %u bytes\n"
+		   "Inode size......: %u bytes\n"
+		   "Groups count....: %u\n"
+		   "Groups size.....: %u blocks\n"
+		   "Groups inodes...: %u inodes\n"
+		   "Inodetable size.: %lu blocks\n",
+
+		   super->s_volume_name,
+		   (super->s_blocks_count * block_size),
+		   (super->s_free_blocks_count * block_size) / 1024,
+		   // #BUG_CONHECIDO: é mostrado mais Free space do que o Campiolo mostra
+		   super->s_free_inodes_count,
+		   super->s_free_blocks_count,
+		   block_size,
+		   super->s_inode_size,
+		   (super->s_blocks_count / super->s_blocks_per_group), // quantos / (quantos por grupo)
+		   /* OBS acima: essa divisão pode retornar um a menos caso o ultimo grupo não tenha
+		   exatamente todo o número de blocos certo, por causa de uma imagem não divisivel pelo tamanho.
+		   #BUG_CONHECIDO: quando documentar bugs conhecidos, colocar esse.
+		   */
+		   super->s_blocks_per_group,
+		   super->s_inodes_per_group,
+		   (super->s_inodes_per_group / (block_size / sizeof(struct ext2_inode))));
+
+	/*
+	infos nao uteis pro comando
+	super->s_inodes_count,
+	super->s_blocks_count,
+	super->s_r_blocks_count, //  reserved blocks count
+	super->s_first_data_block,
+	block_size,
+	super->s_creator_os,
+	super->s_first_ino, // first non-reserved inode
+	super->s_magic);
+	*/
+}
+
 int main(void)
 {
 	printf("\nTeste\n");
-	
+
 	struct ext2_super_block super;
 	struct ext2_group_desc group;
 	struct ext2_inode inode;
@@ -195,38 +240,42 @@ int main(void)
 	}
 
 	block_size = 1024 << super.s_log_block_size;
-	printf("\n---LEITURA DO SUPERBLOCO---\n");
-	printf("Reading super-block from device " FD_DEVICE ":\n"
-		   "Volume name            : %s\n"
-		   "Tamanho da imagem      : %u\n"
-		   "Inodes count            : %u\n"
-		   "Blocks count            : %u\n"
-		   "Reserved blocks count   : %u\n"
-		   "Free blocks count       : %u\n"
-		   "Free inodes count       : %u\n"
-		   "First data block        : %u\n"
-		   "Block size              : %u\n"
-		   "Blocks per group        : %u\n"
-		   "Inodes per group        : %u\n"
-		   "Creator OS              : %u\n"
-		   "First non-reserved inode: %u\n"
-		   "Size of inode structure : %hu\n"
-		   "Magic number            : %hu\n",
-		   super.s_volume_name,
-		   (super.s_blocks_count * block_size),
-		   super.s_inodes_count,
-		   super.s_blocks_count,
-		   super.s_r_blocks_count, /* reserved blocks count */
-		   super.s_free_blocks_count,
-		   super.s_free_inodes_count,
-		   super.s_first_data_block,
-		   block_size,
-		   super.s_blocks_per_group,
-		   super.s_inodes_per_group,
-		   super.s_creator_os,
-		   super.s_first_ino, /* first non-reserved inode */
-		   super.s_inode_size,
-		   super.s_magic);
+
+	// Exibe informações do disco e do sistema de arquivos
+	info(fd, &super);
+
+	// printf("\n---LEITURA DO SUPERBLOCO---\n");
+	// printf("Reading super-block from device " FD_DEVICE ":\n"
+	// 	   "Volume name            : %s\n"
+	// 	   "Tamanho da imagem      : %u\n"
+	// 	   "Inodes count            : %u\n"
+	// 	   "Blocks count            : %u\n"
+	// 	   "Reserved blocks count   : %u\n"
+	// 	   "Free blocks count       : %u\n"
+	// 	   "Free inodes count       : %u\n"
+	// 	   "First data block        : %u\n"
+	// 	   "Block size              : %u\n"
+	// 	   "Blocks per group        : %u\n"
+	// 	   "Inodes per group        : %u\n"
+	// 	   "Creator OS              : %u\n"
+	// 	   "First non-reserved inode: %u\n"
+	// 	   "Size of inode structure : %hu\n"
+	// 	   "Magic number            : %hu\n",
+	// 	   super.s_volume_name,
+	// 	   (super.s_blocks_count * block_size),
+	// 	   super.s_inodes_count,
+	// 	   super.s_blocks_count,
+	// 	   super.s_r_blocks_count, /* reserved blocks count */
+	// 	   super.s_free_blocks_count,
+	// 	   super.s_free_inodes_count,
+	// 	   super.s_first_data_block,
+	// 	   block_size,
+	// 	   super.s_blocks_per_group,
+	// 	   super.s_inodes_per_group,
+	// 	   super.s_creator_os,
+	// 	   super.s_first_ino, /* first non-reserved inode */
+	// 	   super.s_inode_size,
+	// 	   super.s_magic);
 
 	printf("\n---LEITURA DO PRIMEIRO GRUPO---\n");
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
