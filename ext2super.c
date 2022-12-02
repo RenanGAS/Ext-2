@@ -104,7 +104,7 @@ void trocaGrupo(int fd, unsigned int *valor, struct ext2_group_desc *group, int 
 		*grupoAtual = block_group;
 		printf("%d\n", block_group);
 		lseek(fd, BASE_OFFSET + block_size + sizeof(struct ext2_group_desc) * block_group, SEEK_SET);
-		read(fd, &group, sizeof(group));
+		read(fd, group, sizeof(group));
 	}
 }
 
