@@ -365,39 +365,6 @@ int main(void)
 	// Exibe informações do disco e do sistema de arquivos
 	info(fd, &super);
 
-	// printf("\n---LEITURA DO SUPERBLOCO---\n");
-	// printf("Reading super-block from device " FD_DEVICE ":\n"
-	// 	   "Volume name            : %s\n"
-	// 	   "Tamanho da imagem      : %u\n"
-	// 	   "Inodes count            : %u\n"
-	// 	   "Blocks count            : %u\n"
-	// 	   "Reserved blocks count   : %u\n"
-	// 	   "Free blocks count       : %u\n"
-	// 	   "Free inodes count       : %u\n"
-	// 	   "First data block        : %u\n"
-	// 	   "Block size              : %u\n"
-	// 	   "Blocks per group        : %u\n"
-	// 	   "Inodes per group        : %u\n"
-	// 	   "Creator OS              : %u\n"
-	// 	   "First non-reserved inode: %u\n"
-	// 	   "Size of inode structure : %hu\n"
-	// 	   "Magic number            : %hu\n",
-	// 	   super.s_volume_name,
-	// 	   (super.s_blocks_count * block_size),
-	// 	   super.s_inodes_count,
-	// 	   super.s_blocks_count,
-	// 	   super.s_r_blocks_count, /* reserved blocks count */
-	// 	   super.s_free_blocks_count,
-	// 	   super.s_free_inodes_count,
-	// 	   super.s_first_data_block,
-	// 	   block_size,
-	// 	   super.s_blocks_per_group,
-	// 	   super.s_inodes_per_group,
-	// 	   super.s_creator_os,
-	// 	   super.s_first_ino, /* first non-reserved inode */
-	// 	   super.s_inode_size,
-	// 	   super.s_magic);
-
 	printf("\n---LEITURA DO PRIMEIRO GRUPO---\n");
 	lseek(fd, BASE_OFFSET + block_size, SEEK_SET);
 	read(fd, &group, sizeof(group));
