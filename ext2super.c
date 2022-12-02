@@ -272,7 +272,7 @@ void init_super()
 int main(void)
 {
 	printf("\nTeste\n");
-
+	init_super();
 	struct ext2_group_desc group;
 	struct ext2_inode inode;
 	int grupoAtual = 0;
@@ -433,4 +433,4 @@ int main(void)
 	// printf("\n---%d---\n", BLOCK_OFFSET(inode.i_block[0]));
 
 	exit(0);
-} /* main() */
+}
