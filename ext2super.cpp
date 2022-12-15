@@ -36,6 +36,16 @@ using namespace std;
 #define block_size (1024 << super.s_log_block_size)					 // Tamanho do bloco: s_log_block_size expressa o tamanho do bloco em potências de 2
 																	 // Como temos que s_log_block_size = 0, temos que o tamanho do bloco é dado por 1024 * 2^0 = 1024
 
+#define EXT2_S_IRUSR	0x0100	// user read
+#define EXT2_S_IWUSR	0x0080	// user write
+#define EXT2_S_IXUSR	0x0040	// user execute
+#define EXT2_S_IRGRP	0x0020	// group read
+#define EXT2_S_IWGRP	0x0010	// group write
+#define EXT2_S_IXGRP	0x0008	// group execute
+#define EXT2_S_IROTH	0x0004	// others read
+#define EXT2_S_IWOTH	0x0002	// others write
+#define EXT2_S_IXOTH	0x0001	// others execute
+
 static struct ext2_super_block super;
 static int fd;
 // stack<ext2_inode> currentPath;
@@ -533,7 +543,7 @@ void leArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, c
 // 1 - info: exibe informacoes do disco e do sistema de arquivos
 void funct_info()
 {
-	printf("Reading super-block from device " FD_DEVICE ":\n"
+	printf(//"Reading super-block from device " FD_DEVICE ":\n"
 		   "Volume name.....: %s\n"
 		   "Image size......: %u bytes\n"
 		   "Free space......: %u KiB\n"
@@ -582,14 +592,42 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 	getArquivoPorNome(inode, group, nome, &grupoAtual, inodeTemp, grupoTemp);
-	// if (inode.i_mode & S_IXUSR){
-
-	// }
+	char is_file = '-';
+	char user_read, user_write, user_exec;
+	char group_read, group_write, group_exec;
+	char other_read, other_write, other_exec;
+	if(S_ISDIR(inodeTemp->i_mode)) is_file = 'd';
+	else is_file = 'f';
+	if((inodeTemp->i_mode) & (EXT2_S_IRUSR)) user_read = 'r';
+	else user_read = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IWUSR)) user_write = 'w';
+	else user_write = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IXUSR)) user_exec = 'x';
+	else user_exec = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IRGRP)) group_read = 'r';
+	else group_read = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IWGRP)) group_write = 'w';
+	else group_write = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IXGRP)) group_exec = 'x';
+	else group_exec = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IROTH)) other_read = 'r';
+	else other_read = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IWOTH)) other_write = 'w';
+	else other_write = '-';
+	if((inodeTemp->i_mode) & (EXT2_S_IXOTH)) other_exec = 'x';
+	else other_exec = '-';
+	
 	printf("permissões   uid   gid   tamanho   modificado em\n");
-	printf("%c", inodeTemp->i_mode); // TODO: n é assim que funciona, tem que ver oqq ele quer
-	printf("  %d  ", inodeTemp->i_uid);
-	printf("  %d  ", inodeTemp->i_gid);
-	printf("  %d  \n", inodeTemp->i_size); // TODO: converter segundos epoch to datetime
+	printf("%c%c%c%c%c%c%c%c%c%c",
+	is_file,
+	user_read, user_write, user_exec,
+	group_read, group_write, group_exec,
+	other_read, other_write, other_exec
+	);
+	printf("   %d  ", inodeTemp->i_uid);
+	printf("    %d  ", inodeTemp->i_gid);
+	printf("     %d  \n", inodeTemp->i_size); 
+	// TODO: converter segundos epoch to datetime
 	free(inodeTemp);
 	free(grupoTemp);
 }
