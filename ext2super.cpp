@@ -24,10 +24,11 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 
-// Pilha
+// Vetor
 
+#include <cstring>
 #include <iostream>
-#include <stack>
+#include <vector>
 using namespace std;
 
 #define BASE_OFFSET 1024											 // Localização do superbloco
@@ -37,20 +38,20 @@ using namespace std;
 #define block_size (1024 << super.s_log_block_size)					 // Tamanho do bloco: s_log_block_size expressa o tamanho do bloco em potências de 2
 																	 // Como temos que s_log_block_size = 0, temos que o tamanho do bloco é dado por 1024 * 2^0 = 1024
 
-#define EXT2_S_IRUSR	0x0100	// user read
-#define EXT2_S_IWUSR	0x0080	// user write
-#define EXT2_S_IXUSR	0x0040	// user execute
-#define EXT2_S_IRGRP	0x0020	// group read
-#define EXT2_S_IWGRP	0x0010	// group write
-#define EXT2_S_IXGRP	0x0008	// group execute
-#define EXT2_S_IROTH	0x0004	// others read
-#define EXT2_S_IWOTH	0x0002	// others write
-#define EXT2_S_IXOTH	0x0001	// others execute
+#define EXT2_S_IRUSR 0x0100 // user read
+#define EXT2_S_IWUSR 0x0080 // user write
+#define EXT2_S_IXUSR 0x0040 // user execute
+#define EXT2_S_IRGRP 0x0020 // group read
+#define EXT2_S_IWGRP 0x0010 // group write
+#define EXT2_S_IXGRP 0x0008 // group execute
+#define EXT2_S_IROTH 0x0004 // others read
+#define EXT2_S_IWOTH 0x0002 // others write
+#define EXT2_S_IXOTH 0x0001 // others execute
 
 static struct ext2_super_block super;
 static int fd;
 // stack<ext2_inode> currentPath;
-stack<string> currentPath;
+vector<string> vetorCaminhoAtual;
 int grupoAtual = 0;
 
 // Posiciona o leitor do arquivo em  (Inicio_Tabela_Inodes + Distancia_Inode_Desejado) bytes e lê o Inode desejado na variável Inode passada por parâmetro
@@ -118,6 +119,73 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned 
 			if (!strcmp(nome, file_name))
 			{
 				*valorInode = entry->inode;
+				break;
+			}
+			// printf("%s", nometmp);
+			entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
+			size += entry->rec_len;
+		}
+
+		free(block);
+	}
+}
+
+// read_dir para o cd
+void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned int *valorInode, char *nome)
+{
+	void *block;
+	(*valorInode) = -1;
+	if (S_ISDIR(inode->i_mode))
+	{
+		struct ext2_dir_entry_2 *entry;
+		unsigned int size = 0;
+
+		if ((block = malloc(block_size)) == NULL)
+		{ /* allocate memory for the data block */
+			fprintf(stderr, "Memory error\n");
+			close(fd);
+			exit(1);
+		}
+
+		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+		read(fd, block, block_size); /* read block from disk*/
+
+		entry = (struct ext2_dir_entry_2 *)block; /* first entry in the directory */
+												  /* Notice that the list may be terminated with a NULL
+													 entry (entry->inode == NULL)*/
+
+		while ((size < inode->i_size) && entry->inode)
+		{
+			char file_name[EXT2_NAME_LEN + 1];
+			memcpy(file_name, entry->name, entry->name_len);
+			file_name[entry->name_len] = 0; /* append null character to the file name */
+			// printf("%10u %s\n", entry->inode, file_name);
+			if (!strcmp(nome, file_name))
+			{
+				string nomeEntrada = entry->name;
+
+				if (!strcmp(entry->name, ".."))
+				{
+					*valorInode = entry->inode;
+
+					if (vetorCaminhoAtual.empty())
+					{
+						break;
+					}
+
+					vetorCaminhoAtual.pop_back();
+					break;
+				}
+
+				if (!strcmp(entry->name, "."))
+				{
+					*valorInode = entry->inode;
+					break;
+				}
+
+				vetorCaminhoAtual.push_back(nomeEntrada);
+				*valorInode = entry->inode;
+
 				break;
 			}
 			// printf("%s", nometmp);
@@ -570,35 +638,35 @@ void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *no
 // 1 - info: exibe informacoes do disco e do sistema de arquivos
 void funct_info()
 {
-	printf(//"Reading super-block from device " FD_DEVICE ":\n"
-		   "Volume name.....: %s\n"
-		   "Image size......: %u bytes\n"
-		   "Free space......: %u KiB\n"
-		   "Free inodes.....: %u\n"
-		   "Free blocks.....: %u\n"
-		   "Block size......: %u bytes\n"
-		   "Inode size......: %u bytes\n"
-		   "Groups count....: %u\n"
-		   "Groups size.....: %u blocks\n"
-		   "Groups inodes...: %u inodes\n"
-		   "Inodetable size.: %lu blocks\n",
+	printf( //"Reading super-block from device " FD_DEVICE ":\n"
+		"Volume name.....: %s\n"
+		"Image size......: %u bytes\n"
+		"Free space......: %u KiB\n"
+		"Free inodes.....: %u\n"
+		"Free blocks.....: %u\n"
+		"Block size......: %u bytes\n"
+		"Inode size......: %u bytes\n"
+		"Groups count....: %u\n"
+		"Groups size.....: %u blocks\n"
+		"Groups inodes...: %u inodes\n"
+		"Inodetable size.: %lu blocks\n",
 
-		   super.s_volume_name,
-		   (super.s_blocks_count * block_size),
-		   (super.s_free_blocks_count * block_size) / 1024,
-		   // #BUG_CONHECIDO: é mostrado mais Free space do que o Campiolo mostra
-		   super.s_free_inodes_count,
-		   super.s_free_blocks_count,
-		   block_size,
-		   super.s_inode_size,
-		   (super.s_blocks_count / super.s_blocks_per_group), // quantos / (quantos por grupo)
-		   /* OBS acima: essa divisão pode retornar um a menos caso o ultimo grupo não tenha
-		   exatamente todo o número de blocos certo, por causa de uma imagem não divisivel pelo tamanho.
-		   #BUG_CONHECIDO: quando documentar bugs conhecidos, colocar esse.
-		   */
-		   super.s_blocks_per_group,
-		   super.s_inodes_per_group,
-		   (super.s_inodes_per_group / (block_size / sizeof(struct ext2_inode))));
+		super.s_volume_name,
+		(super.s_blocks_count * block_size),
+		(super.s_free_blocks_count * block_size) / 1024,
+		// #BUG_CONHECIDO: é mostrado mais Free space do que o Campiolo mostra
+		super.s_free_inodes_count,
+		super.s_free_blocks_count,
+		block_size,
+		super.s_inode_size,
+		(super.s_blocks_count / super.s_blocks_per_group), // quantos / (quantos por grupo)
+		/* OBS acima: essa divisão pode retornar um a menos caso o ultimo grupo não tenha
+		exatamente todo o número de blocos certo, por causa de uma imagem não divisivel pelo tamanho.
+		#BUG_CONHECIDO: quando documentar bugs conhecidos, colocar esse.
+		*/
+		super.s_blocks_per_group,
+		super.s_inodes_per_group,
+		(super.s_inodes_per_group / (block_size / sizeof(struct ext2_inode))));
 
 	/*
 	infos nao uteis pro comando
@@ -623,36 +691,56 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 	char user_read, user_write, user_exec;
 	char group_read, group_write, group_exec;
 	char other_read, other_write, other_exec;
-	if(S_ISDIR(inodeTemp->i_mode)) is_file = 'd';
-	else is_file = 'f';
-	if((inodeTemp->i_mode) & (EXT2_S_IRUSR)) user_read = 'r';
-	else user_read = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IWUSR)) user_write = 'w';
-	else user_write = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IXUSR)) user_exec = 'x';
-	else user_exec = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IRGRP)) group_read = 'r';
-	else group_read = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IWGRP)) group_write = 'w';
-	else group_write = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IXGRP)) group_exec = 'x';
-	else group_exec = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IROTH)) other_read = 'r';
-	else other_read = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IWOTH)) other_write = 'w';
-	else other_write = '-';
-	if((inodeTemp->i_mode) & (EXT2_S_IXOTH)) other_exec = 'x';
-	else other_exec = '-';
-	
+	if (S_ISDIR(inodeTemp->i_mode))
+		is_file = 'd';
+	else
+		is_file = 'f';
+	if ((inodeTemp->i_mode) & (EXT2_S_IRUSR))
+		user_read = 'r';
+	else
+		user_read = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IWUSR))
+		user_write = 'w';
+	else
+		user_write = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IXUSR))
+		user_exec = 'x';
+	else
+		user_exec = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IRGRP))
+		group_read = 'r';
+	else
+		group_read = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IWGRP))
+		group_write = 'w';
+	else
+		group_write = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IXGRP))
+		group_exec = 'x';
+	else
+		group_exec = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IROTH))
+		other_read = 'r';
+	else
+		other_read = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IWOTH))
+		other_write = 'w';
+	else
+		other_write = '-';
+	if ((inodeTemp->i_mode) & (EXT2_S_IXOTH))
+		other_exec = 'x';
+	else
+		other_exec = '-';
+
 	printf("permissões   uid   gid   tamanho   modificado em\n");
 	printf("%c%c%c%c%c%c%c%c%c%c",
-	is_file,
-	user_read, user_write, user_exec,
-	group_read, group_write, group_exec,
-	other_read, other_write, other_exec
-	);
+		   is_file,
+		   user_read, user_write, user_exec,
+		   group_read, group_write, group_exec,
+		   other_read, other_write, other_exec);
 	printf("   %d  ", inodeTemp->i_uid);
 	printf("    %d  ", inodeTemp->i_gid);
+
 	if(inodeTemp->i_size > 1024)
 	{ 
 		printf("  %.1f KiB", (((float)inodeTemp->i_size) / 1024));
@@ -675,7 +763,7 @@ void funct_cd(struct ext2_inode *inode, struct ext2_group_desc *group, int *grup
 {
 	unsigned int inodeTmp = 0;
 
-	read_dir(inode, group, &inodeTmp, nome);
+	constroiCaminho(inode, group, &inodeTmp, nome);
 
 	trocaGrupo(&inodeTmp, group, grupoAtual);
 
@@ -728,6 +816,26 @@ void funct_ls(struct ext2_inode *inode, struct ext2_group_desc *group)
 	}
 }
 
+//
+char *caminhoAtual(vector<string> caminhoVetor)
+{
+	char *caminho = (char *)malloc(100 * sizeof(char));
+
+	if (caminhoVetor.empty())
+	{
+		strcat(caminho, "/");
+	}
+
+	for (int i = 0; i < caminhoVetor.size(); i++)
+	{
+		strcat(caminho, "/");
+
+		strcat(caminho, caminhoVetor[i].c_str());
+	}
+
+	return caminho;
+}
+
 /* Lida com as entradas da linha de comando
 
 comandoPrincipal: identificador do comando
@@ -758,7 +866,10 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	}
 	else if (!strcmp(comandoPrincipal, "pwd"))
 	{
-		/* code */
+		char *caminhoPwd;
+		caminhoPwd = caminhoAtual(vetorCaminhoAtual);
+
+		printf("\n%s\n", caminhoPwd);
 	}
 	else
 	{
@@ -784,7 +895,21 @@ int main(void)
 	{
 		numeroArgumentos = 0;
 
-		entrada = readline("[nEXT2Shell]>>> ");
+		char prompt[100] = "";
+
+		strcat(prompt, "[");
+
+		char *caminhoAbsoluto;
+		caminhoAbsoluto = caminhoAtual(vetorCaminhoAtual);
+
+		strcat(prompt, caminhoAbsoluto);
+
+		strcat(prompt, "]$> ");
+
+		entrada = readline(prompt);
+
+		free(caminhoAbsoluto);
+
 		if (!strcmp(entrada, "")) // Reinicia o processo de entrada se nenhum comando for digitado;
 		{
 			continue;
