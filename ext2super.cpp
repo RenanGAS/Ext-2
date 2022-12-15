@@ -512,6 +512,13 @@ void copiaArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group
 	free(inodeTemp);
 }
 
+void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual)
+{
+	if(S_ISDIR(inode->i_mode)) leArquivoPorNome(inode, group, nome, grupoAtual);
+	else printf("Erro: é um diretório");
+
+}
+
 // Função comentada: pretende exibir o conteúdo de um arquivo de nome 'nome'
 void leArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual)
 {
@@ -704,7 +711,7 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	}
 	else if (!strcmp(comandoPrincipal, "cat"))
 	{
-		leArquivoPorNome(inode, group, comandoInteiro[1], &grupoAtual);
+		funct_cat(inode, group, comandoInteiro[1], &grupoAtual);
 	}
 	else if (!strcmp(comandoPrincipal, "attr"))
 	{
