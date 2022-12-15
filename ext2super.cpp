@@ -15,6 +15,7 @@
 #include <linux/types.h>
 #include "ext2.h"
 #include <string.h>
+#include <time.h>  
 
 // Shell
 
@@ -634,8 +635,19 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 	);
 	printf("   %d  ", inodeTemp->i_uid);
 	printf("    %d  ", inodeTemp->i_gid);
-	printf("     %d  \n", inodeTemp->i_size); 
+	if(inodeTemp->i_size > 1024)
+	{ 
+		printf("  %.1f KiB", (((float)inodeTemp->i_size) / 1024));
+	}
+	else printf("  %d B ", (inodeTemp->i_size));
+
 	// TODO: converter segundos epoch to datetime
+	time_t tempo = (inodeTemp->i_mtime);
+	struct tm * ptm = gmtime(&tempo);
+	printf("  %d/%d/%d %d:%d", 
+	ptm->tm_mday, ptm->tm_mon, (ptm->tm_year + 1900),
+	ptm->tm_hour, ptm->tm_min);
+	printf("\n");
 	free(inodeTemp);
 	free(grupoTemp);
 }
@@ -743,7 +755,6 @@ int main(void)
 {
 	struct ext2_group_desc group;
 	struct ext2_inode inode;
-	int grupoAtual = 0;
 
 	char *entrada = (char *)malloc(100 * sizeof(char));		  // Comando enviado pelo terminal
 	char **argumentos = (char **)malloc(10 * sizeof(char *)); // Lista de strings/argumentos do comando
