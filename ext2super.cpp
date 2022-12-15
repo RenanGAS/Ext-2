@@ -347,7 +347,7 @@ void init_super(struct ext2_group_desc *group, struct ext2_inode *inode)
 
 novoInode, novoGroup: variáveis auxiliares para manutenção dos antigos valores em inode e group
 */
-void getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual, struct ext2_inode *novoInode, struct ext2_group_desc *novoGroup)
+int getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual, struct ext2_inode *novoInode, struct ext2_group_desc *novoGroup)
 {
 	unsigned int valorInodeTmp;
 
@@ -364,7 +364,7 @@ void getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, 
 	if (valorInodeTmp == -1)
 	{
 		printf("ARQUIVO NÃO ENCONTRADO");
-		return;
+		return 1;
 	}
 
 	// printf("TROCOU DE GRUPO");
@@ -377,6 +377,8 @@ void getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, 
 
 	// Atualização do Inode no novo Grupo
 	read_inode(index, novoGroup, novoInode);
+
+	return 0;
 }
 
 // Copia o conteúdo dos blocos de dados em inode para arquivo
@@ -542,8 +544,24 @@ void leArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, c
 
 void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual)
 {
-	if(S_ISDIR(inode->i_mode)) leArquivoPorNome(inode, group, nome, grupoAtual);
-	else printf("Erro: é um diretório");
+	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
+
+	if (getArquivoPorNome(inode, group, nome, grupoAtual, inodeTemp, grupoTemp) == 1)
+	{
+		return;
+	}
+	
+	if (S_ISDIR(inodeTemp->i_mode))
+	{
+		printf("Erro: É um diretório");
+		return;
+	}
+
+	printaArquivo(inodeTemp);
+	
+	free(grupoTemp);
+	free(inodeTemp);
 
 }
 
@@ -744,8 +762,7 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	}
 	else
 	{
-		printf("\nErro\n");
-		return -1;
+		printf("\nErro: Comando não suportado\n");
 	}
 
 	return 0;
@@ -799,7 +816,7 @@ int main(void)
 
 		if (executarComando(argumentos[0], argumentos, &inode, &group) == -1)
 		{
-			printf("\nErro: Comando nao suportado\n");
+			printf("\nErro\n");
 			exit(1);
 		}
 
