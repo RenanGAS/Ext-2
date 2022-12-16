@@ -15,7 +15,7 @@
 #include <linux/types.h>
 #include "ext2.h"
 #include <string.h>
-#include <time.h>  
+#include <time.h>
 
 // Shell
 
@@ -68,9 +68,9 @@ deste na variável group passada por parâmetro
 valor: valor do Inode
 grupoAtual: Grupo corrente
 */
-void trocaGrupo(unsigned int *valor, struct ext2_group_desc *group, int *grupoAtual)
+void trocaGrupo(long int *valor, struct ext2_group_desc *group, int *grupoAtual)
 {
-	unsigned int block_group = ((*valor) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
+	long int block_group = ((*valor) - 1) / super.s_inodes_per_group; // Cálculo do grupo do Inode
 
 	if (block_group != (*grupoAtual))
 	{
@@ -87,7 +87,7 @@ inode, group: Inode/Grupo do diretório
 valorInode: variável que receberá o Inode da entrada com nome 'nome'
 nome: nome da entrada procurada no diretório
  */
-void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned int *valorInode, char *nome)
+void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int *valorInode, char *nome)
 {
 	void *block;
 	(*valorInode) = -1;
@@ -131,70 +131,72 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned 
 }
 
 // read_dir para o cd
-void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned int *valorInode, char *nome)
+void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, long int *valorInode, char *nome)
 {
 	void *block;
-	(*valorInode) = -1;
-	if (S_ISDIR(inode->i_mode))
+	*valorInode = -1;
+	struct ext2_dir_entry_2 *entry;
+	unsigned int size = 0;
+
+	if ((block = malloc(block_size)) == NULL)
+	{ /* allocate memory for the data block */
+		fprintf(stderr, "Memory error\n");
+		close(fd);
+		exit(1);
+	}
+
+	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+	read(fd, block, block_size); /* read block from disk*/
+
+	entry = (struct ext2_dir_entry_2 *)block; /* first entry in the directory */
+											  /* Notice that the list may be terminated with a NULL
+												 entry (entry->inode == NULL)*/
+
+	while ((size < inode->i_size) && entry->inode)
 	{
-		struct ext2_dir_entry_2 *entry;
-		unsigned int size = 0;
-
-		if ((block = malloc(block_size)) == NULL)
-		{ /* allocate memory for the data block */
-			fprintf(stderr, "Memory error\n");
-			close(fd);
-			exit(1);
-		}
-
-		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-		read(fd, block, block_size); /* read block from disk*/
-
-		entry = (struct ext2_dir_entry_2 *)block; /* first entry in the directory */
-												  /* Notice that the list may be terminated with a NULL
-													 entry (entry->inode == NULL)*/
-
-		while ((size < inode->i_size) && entry->inode)
+		char file_name[EXT2_NAME_LEN + 1];
+		memcpy(file_name, entry->name, entry->name_len);
+		file_name[entry->name_len] = 0; /* append null character to the file name */
+		// printf("%10u %s\n", entry->inode, file_name);
+		if (!strcmp(nome, file_name))
 		{
-			char file_name[EXT2_NAME_LEN + 1];
-			memcpy(file_name, entry->name, entry->name_len);
-			file_name[entry->name_len] = 0; /* append null character to the file name */
-			// printf("%10u %s\n", entry->inode, file_name);
-			if (!strcmp(nome, file_name))
+			if (entry->file_type != 2)
 			{
-				string nomeEntrada = entry->name;
+				printf("\nErro: Não é um diretório.\n");
+				constroiCaminho(inode, group, valorInode, ".");
+				return;
+			}
 
-				if (!strcmp(entry->name, ".."))
+			string nomeEntrada = entry->name;
+
+			if (!strcmp(entry->name, ".."))
+			{
+				if (vetorCaminhoAtual.empty())
 				{
-					*valorInode = entry->inode;
-
-					if (vetorCaminhoAtual.empty())
-					{
-						break;
-					}
-
-					vetorCaminhoAtual.pop_back();
 					break;
 				}
 
-				if (!strcmp(entry->name, "."))
-				{
-					*valorInode = entry->inode;
-					break;
-				}
-
-				vetorCaminhoAtual.push_back(nomeEntrada);
-				*valorInode = entry->inode;
-
+				vetorCaminhoAtual.pop_back();
 				break;
 			}
-			// printf("%s", nometmp);
-			entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
-			size += entry->rec_len;
-		}
 
-		free(block);
+			if (!strcmp(entry->name, "."))
+			{
+				break;
+			}
+
+			vetorCaminhoAtual.push_back(nomeEntrada);
+
+			break;
+		}
+		// printf("%s", nometmp);
+		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
+		size += entry->rec_len;
 	}
+
+	*valorInode = entry->inode;
+
+	free(block);
 }
 
 // Exibe as informações do Inode passado por parâmetro
@@ -417,7 +419,7 @@ novoInode, novoGroup: variáveis auxiliares para manutenção dos antigos valore
 */
 int getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual, struct ext2_inode *novoInode, struct ext2_group_desc *novoGroup)
 {
-	unsigned int valorInodeTmp;
+	long int valorInodeTmp;
 
 	// Cópia das variáveis para mudança de valores de Grupo e Inode
 	memcpy(novoGroup, group, sizeof(struct ext2_group_desc));
@@ -583,7 +585,6 @@ void copiaArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group
 	free(inodeTemp);
 }
 
-
 // Função comentada: pretende exibir o conteúdo de um arquivo de nome 'nome'
 void leArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int *grupoAtual)
 {
@@ -619,7 +620,7 @@ void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *no
 	{
 		return;
 	}
-	
+
 	if (S_ISDIR(inodeTemp->i_mode))
 	{
 		printf("Erro: É um diretório");
@@ -627,10 +628,9 @@ void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *no
 	}
 
 	printaArquivo(inodeTemp);
-	
+
 	free(grupoTemp);
 	free(inodeTemp);
-
 }
 
 // Funcoes de leitura
@@ -653,7 +653,7 @@ void funct_info()
 
 		super.s_volume_name,
 		(super.s_blocks_count * block_size),
-		(super.s_free_blocks_count * block_size) / 1024,
+		((super.s_free_blocks_count - super.s_r_blocks_count) * block_size) / 1024,
 		// #BUG_CONHECIDO: é mostrado mais Free space do que o Campiolo mostra
 		super.s_free_inodes_count,
 		super.s_free_blocks_count,
@@ -741,18 +741,20 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 	printf("   %d  ", inodeTemp->i_uid);
 	printf("    %d  ", inodeTemp->i_gid);
 
-	if(inodeTemp->i_size > 1024)
-	{ 
+	if (inodeTemp->i_size > 1024)
+	{
 		printf("  %.1f KiB", (((float)inodeTemp->i_size) / 1024));
 	}
-	else printf("  %d B ", (inodeTemp->i_size));
+	else
+		printf("  %d B ", (inodeTemp->i_size));
 
 	// TODO: converter segundos epoch to datetime
 	time_t tempo = (inodeTemp->i_mtime);
-	struct tm * ptm = gmtime(&tempo);
-	printf("  %d/%d/%d %d:%d", 
-	ptm->tm_mday, ptm->tm_mon, (ptm->tm_year + 1900),
-	ptm->tm_hour, ptm->tm_min);
+
+	struct tm *ptm = localtime(&tempo);
+	printf("  %d/%d/%d %d:%d",
+		   ptm->tm_mday, ptm->tm_mon + 1, (ptm->tm_year + 1900),
+		   ptm->tm_hour, ptm->tm_min);
 	printf("\n");
 	free(inodeTemp);
 	free(grupoTemp);
@@ -761,11 +763,12 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 // 4 - cd <path>: altera o diretorio corrente para o definido como path
 void funct_cd(struct ext2_inode *inode, struct ext2_group_desc *group, int *grupoAtual, char *nome)
 {
-	unsigned int inodeTmp = 0;
+	long int inodeTmp = 0;
 
 	constroiCaminho(inode, group, &inodeTmp, nome);
 
-	trocaGrupo(&inodeTmp, group, grupoAtual);
+	if (inodeTmp != -1)
+		trocaGrupo(&inodeTmp, group, grupoAtual);
 
 	unsigned int index = ((int)inodeTmp) % super.s_inodes_per_group;
 
