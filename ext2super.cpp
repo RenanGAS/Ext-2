@@ -907,7 +907,7 @@ int main(void)
 
 		strcat(prompt, caminhoAbsoluto);
 
-		strcat(prompt, "]$> ");
+		strcat(prompt, "/]$> ");
 
 		entrada = readline(prompt);
 
