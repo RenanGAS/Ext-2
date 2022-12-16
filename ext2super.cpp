@@ -3,7 +3,7 @@
  *
  * Autor: Christofer Daniel Rodrigues Santos, Guilherme Augusto Rodrigues Maturana, Renan Guensuke Aoki Sakashita
  * Data de criação: 22/10/2022
- * Datas de atualização: 04/11/2022, 11/11/2022, 18/11/2022, 25/11/2022, 02/12/2022
+ * Datas de atualização: 04/11/2022, 11/11/2022, 18/11/2022, 25/11/2022, 02/12/2022, 15/12/2022
  */
 
 #include <sys/types.h>
@@ -131,7 +131,7 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int 
 }
 
 // read_dir para o cd
-void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, long int *valorInode, char *nome)
+void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, long int *valorInode, const char *nome)
 {
 	void *block;
 	*valorInode = -1;
@@ -151,7 +151,7 @@ void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, lo
 	entry = (struct ext2_dir_entry_2 *)block; /* first entry in the directory */
 											  /* Notice that the list may be terminated with a NULL
 												 entry (entry->inode == NULL)*/
-
+	int found = 0;
 	while ((size < inode->i_size) && entry->inode)
 	{
 		char file_name[EXT2_NAME_LEN + 1];
@@ -160,10 +160,11 @@ void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, lo
 		// printf("%10u %s\n", entry->inode, file_name);
 		if (!strcmp(nome, file_name))
 		{
+			found = 1;
 			if (entry->file_type != 2)
 			{
-				printf("\nErro: Não é um diretório.\n");
-				constroiCaminho(inode, group, valorInode, ".");
+				printf("Erro: Não é um diretório.");
+				constroiCaminho(inode, group, valorInode, &("."[0]));
 				return;
 			}
 
@@ -193,7 +194,7 @@ void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, lo
 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
 		size += entry->rec_len;
 	}
-
+	if(!found) printf("Diretório não encontrado");
 	*valorInode = entry->inode;
 
 	free(block);
@@ -828,7 +829,7 @@ char *caminhoAtual(vector<string> caminhoVetor)
 		strcat(caminho, "/");
 	}
 
-	for (int i = 0; i < caminhoVetor.size(); i++)
+	for (long unsigned int i = 0; i < caminhoVetor.size(); i++)
 	{
 		strcat(caminho, "/");
 
