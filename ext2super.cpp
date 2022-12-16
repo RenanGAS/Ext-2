@@ -91,6 +91,7 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int 
 {
 	void *block;
 	(*valorInode) = -1;
+	if (!strlen(nome)) *valorInode = -2;
 	if (S_ISDIR(inode->i_mode))
 	{
 		struct ext2_dir_entry_2 *entry;
@@ -163,7 +164,7 @@ void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, lo
 			found = 1;
 			if (entry->file_type != 2)
 			{
-				printf("Erro: Não é um diretório.");
+				printf("Erro: Não é um diretório.\n");
 				constroiCaminho(inode, group, valorInode, &("."[0]));
 				return;
 			}
@@ -194,7 +195,7 @@ void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, lo
 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
 		size += entry->rec_len;
 	}
-	if(!found) printf("Diretório não encontrado");
+	if(!found) printf("Diretório não encontrado.\n");
 	*valorInode = entry->inode;
 
 	free(block);
@@ -434,8 +435,11 @@ int getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, c
 	// ERRO: valorInodeTmp é unsigned
 	if (valorInodeTmp == -1)
 	{
-		printf("ARQUIVO NÃO ENCONTRADO");
-		return 1;
+		return -1;
+	}
+	else if(valorInodeTmp == -2)
+	{
+		return -2;
 	}
 
 	// printf("TROCOU DE GRUPO");
@@ -617,14 +621,20 @@ void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *no
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 
-	if (getArquivoPorNome(inode, group, nome, grupoAtual, inodeTemp, grupoTemp) == 1)
+	int retorno = getArquivoPorNome(inode, group, nome, grupoAtual, inodeTemp, grupoTemp);
+	if (retorno == -1){
+		printf("Arquivo não encontrado\n");
+		return;
+	}
+	if(retorno == -2)
 	{
+		printf("Sintax incorreta\n");
 		return;
 	}
 
 	if (S_ISDIR(inodeTemp->i_mode))
 	{
-		printf("Erro: É um diretório");
+		printf("Erro: É um diretório\n");
 		return;
 	}
 
@@ -733,21 +743,20 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 	else
 		other_exec = '-';
 
-	printf("permissões   uid   gid   tamanho   modificado em\n");
+	printf("permissões   uid   gid    tamanho    modificado em\n");
 	printf("%c%c%c%c%c%c%c%c%c%c",
 		   is_file,
 		   user_read, user_write, user_exec,
 		   group_read, group_write, group_exec,
 		   other_read, other_write, other_exec);
-	printf("   %d  ", inodeTemp->i_uid);
-	printf("    %d  ", inodeTemp->i_gid);
-
+	printf("    %d  ", inodeTemp->i_uid);
+	printf("    %d ", inodeTemp->i_gid);
 	if (inodeTemp->i_size > 1024)
 	{
-		printf("  %.1f KiB", (((float)inodeTemp->i_size) / 1024));
+		printf("   %.1f KiB", (((float)inodeTemp->i_size) / 1024));
 	}
 	else
-		printf("  %d B ", (inodeTemp->i_size));
+		printf("    %d B ", (inodeTemp->i_size));
 
 	// TODO: converter segundos epoch to datetime
 	time_t tempo = (inodeTemp->i_mtime);
@@ -876,7 +885,7 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	}
 	else
 	{
-		printf("\nErro: Comando não suportado\n");
+		printf("Erro: Comando não suportado\n");
 	}
 
 	return 0;
@@ -953,7 +962,7 @@ int main(void)
 			free(argumentos[i]);
 		}
 
-		printf("\n");
+		// printf("\n");
 	}
 
 	exit(0);
