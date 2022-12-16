@@ -824,10 +824,10 @@ char *caminhoAtual(vector<string> caminhoVetor)
 {
 	char *caminho = (char *)calloc(100, sizeof(char));
 
-	if (caminhoVetor.empty())
-	{
-		strcat(caminho, "/");
-	}
+	//if (caminhoVetor.empty())
+	//{
+	//	strcat(caminho, "/");
+	//}
 
 	for (long unsigned int i = 0; i < caminhoVetor.size(); i++)
 	{
