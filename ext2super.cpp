@@ -767,8 +767,7 @@ void funct_cd(struct ext2_inode *inode, struct ext2_group_desc *group, int *grup
 
 	constroiCaminho(inode, group, &inodeTmp, nome);
 
-	if (inodeTmp != -1)
-		trocaGrupo(&inodeTmp, group, grupoAtual);
+	trocaGrupo(&inodeTmp, group, grupoAtual);
 
 	unsigned int index = ((int)inodeTmp) % super.s_inodes_per_group;
 
@@ -822,7 +821,7 @@ void funct_ls(struct ext2_inode *inode, struct ext2_group_desc *group)
 //
 char *caminhoAtual(vector<string> caminhoVetor)
 {
-	char *caminho = (char *)malloc(100 * sizeof(char));
+	char *caminho = (char *)calloc(100, sizeof(char));
 
 	if (caminhoVetor.empty())
 	{
