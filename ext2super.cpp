@@ -172,7 +172,7 @@ int getLastEntry(int fd, const struct ext2_inode *inode, const struct ext2_group
 			file_name[entry->name_len] = 0; /* append null character to the file name */
 			printf("%10u %s", entry->inode, file_name);
 			// printf("%s", nometmp);
-			entry = (void *)entry + entry->rec_len;
+			entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
 			size += entry->rec_len;
 			printf(" - EntryVal:%d\n", size);
 			printf(" - Acc:%d\n", acc);
@@ -639,7 +639,7 @@ void read_block_bitmap(int fd, struct ext2_group_desc *group)
 {
 	unsigned char *bitmap;
 
-	bitmap = malloc(block_size); /* allocate memory for the bitmap */
+	bitmap = (unsigned char *)malloc(block_size); /* allocate memory for the bitmap */
 	lseek(fd, BLOCK_OFFSET(group->bg_block_bitmap), SEEK_SET);
 	read(fd, bitmap, block_size); /* read bitmap from disk */
 	printf("\n\n-----Lendo block bitmap-----\n\n");
@@ -662,7 +662,7 @@ void read_inode_bitmap(int fd, struct ext2_group_desc *group)
 {
 	char *bitmap;
 
-	bitmap = malloc(block_size); /* allocate memory for the bitmap */
+	bitmap = (char *)malloc(block_size); /* allocate memory for the bitmap */
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_bitmap), SEEK_SET);
 	read(fd, bitmap, block_size); /* read bitmap from disk */
 	printf("\n\n-----Lendo inode bitmap-----\n\n");
@@ -685,7 +685,7 @@ int find_free_inode(int fd, struct ext2_group_desc *group)
 {
 	char *bitmap;
 
-	bitmap = malloc(block_size); /* allocate memory for the bitmap */
+	bitmap = (char *)malloc(block_size); /* allocate memory for the bitmap */
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_bitmap), SEEK_SET);
 	read(fd, bitmap, block_size); /* read bitmap from disk */
 	int buscar = 1;
@@ -717,7 +717,7 @@ int find_free_block(int fd, struct ext2_group_desc *group)
 {
 	unsigned char *bitmap;
 	int buscar = 1;
-	bitmap = malloc(block_size); /* allocate memory for the bitmap */
+	bitmap = (unsigned char *)malloc(block_size); /* allocate memory for the bitmap */
 	lseek(fd, BLOCK_OFFSET(group->bg_block_bitmap), SEEK_SET);
 	read(fd, bitmap, block_size); /* read bitmap from disk */
 	printf("\n\n-----Lendo block bitmap-----\n\n");
@@ -752,7 +752,7 @@ void set_block_bitmap(int fd, struct ext2_group_desc *group, int bitVal)
 	int marcado = (0x1 << x);
 	printf("\n--MARCADO %X", marcado);
 
-	bitmap = malloc(block_size); /* allocate memory for the bitmap */
+	bitmap = (char *)malloc(block_size); /* allocate memory for the bitmap */
 	lseek(fd, BLOCK_OFFSET(group->bg_block_bitmap), SEEK_SET);
 	read(fd, bitmap, block_size);
 
@@ -779,7 +779,7 @@ void set_inode_bitmap(int fd, struct ext2_group_desc *group, int bitVal)
 	int marcado = (0x1 << x);
 	printf("\n--MARCADO %X", marcado);
 
-	bitmap = malloc(block_size); /* allocate memory for the bitmap */
+	bitmap = (char *)malloc(block_size); /* allocate memory for the bitmap */
 	lseek(fd, BLOCK_OFFSET(group->bg_inode_bitmap), SEEK_SET);
 	read(fd, bitmap, block_size);
 
@@ -805,22 +805,23 @@ int roundLen(int tamanho)
 // ADCIONADO
 void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *nome)
 {
-	struct ext2_dir_entry_2 *entryTmp = malloc(sizeof(struct ext2_dir_entry_2));
-	struct ext2_inode *inodeTemp = malloc(sizeof(struct ext2_inode));
-	struct ext2_inode *inodeC = malloc(sizeof(struct ext2_inode));
+	struct ext2_dir_entry_2 *entryTmp = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
+	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
+	struct ext2_inode *inodeC = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 	void *producedBlock;
-	struct ext2_dir_entry_2 *producedEntry; 
-	
+	struct ext2_dir_entry_2 *producedEntry;
+
 	char *nomeFinal;
 	int tamNome;
 	int arredondamento = 0;
 	int tamanho = 0;
 	int inodeVal = 0;
-	int existe = 0;
+	long existe = 0;
 	int blockVal = 0;
 
-	read_dir(fd, inode, group, &existe, nome);
-	if(existe != -1){
+	read_dir(inode, group, &existe, nome);
+	if (existe != -1)
+	{
 		printf("ARQUIVO JA EXISTENTE");
 		return;
 	}
@@ -831,36 +832,35 @@ void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 	set_inode_bitmap(fd, group, (inodeVal - 1));
 
 	tamNome = strlen(nome);
-	arredondamento = roundLen(8+tamNome);
-	nomeFinal = malloc((tamNome + arredondamento) * sizeof(char));
+	arredondamento = roundLen(8 + tamNome);
+	nomeFinal = (char *)malloc((tamNome + arredondamento) * sizeof(char));
 	strcpy(nomeFinal, nome);
 	for (int i = 0; i < arredondamento; i++)
 	{
 		strcat(nomeFinal, "\0");
 	}
 
-	producedEntry = (struct ext2_dir_entry_2 *) malloc(block_size);
-	//producedEntry = (struct ext2_dir_entry_2 *)producedBlock;
+	producedEntry = (struct ext2_dir_entry_2 *)malloc(block_size);
+	// producedEntry = (struct ext2_dir_entry_2 *)producedBlock;
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 1;
 	producedEntry->rec_len = 12;
 	memcpy(producedEntry->name, ".\0\0\0", 4);
 	producedEntry->inode = 2;
 
-	producedEntry = (void *)producedEntry + producedEntry->rec_len;
+	producedEntry = (ext2_dir_entry_2 *)((char *)producedEntry + producedEntry->rec_len);
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 2;
 	producedEntry->rec_len = 12;
 	memcpy(producedEntry->name, "..\0\0", 4);
 	producedEntry->inode = 2;
 
-	producedEntry = (void *)producedEntry + producedEntry->rec_len;
+	producedEntry = (ext2_dir_entry_2 *)((char *)producedEntry + producedEntry->rec_len);
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 2;
 	producedEntry->rec_len = 1000;
 	memcpy(producedEntry->name, "...\0", 4);
 	producedEntry->inode = 2;
-
 
 	blockVal = find_free_block(fd, group) + 1;
 	printf("\n\n-----BlockVal: %d\n", blockVal);
@@ -869,10 +869,8 @@ void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 	lseek(fd, BLOCK_OFFSET(blockVal), SEEK_SET);
 	write(fd, producedEntry, block_size);
 
-
-
 	int temp = getLastEntry(fd, inode, group);
-	//tamNome = strlen(nome);
+	// tamNome = strlen(nome);
 
 	void *block;
 	if (S_ISDIR(inode->i_mode))
@@ -892,7 +890,7 @@ void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		read(fd, block, block_size); /* read block from disk*/
 
 		entry = (struct ext2_dir_entry_2 *)block;
-		entry = (void *)entry + temp;
+		entry = (ext2_dir_entry_2 *)((char *)entry + temp);
 		entry->rec_len = 8 + entry->name_len;
 		entry->rec_len = entry->rec_len + roundLen(entry->rec_len);
 
@@ -912,7 +910,7 @@ void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		inodeTemp->i_block[13] = 0;
 		inodeTemp->i_block[14] = 0;
 		inodeTemp->i_atime = 1668912196;
-		inodeTemp->i_blocks=2;
+		inodeTemp->i_blocks = 2;
 		inodeTemp->i_ctime = 1668911978;
 		inodeTemp->i_dir_acl = 0;
 		inodeTemp->i_dtime = 0;
@@ -929,13 +927,13 @@ void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		write_inode(fd, inodeVal, group, inodeTemp);
 
 		temp = temp + entry->rec_len;
-		entry = (void *)entry + entry->rec_len;
+		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
 		entry->inode = inodeVal;
 		entry->name_len = tamNome;
 		entry->rec_len = 1024 - temp;
-		memcpy(entry->name, nomeFinal, tamNome*sizeof(char));
+		memcpy(entry->name, nomeFinal, tamNome * sizeof(char));
 		entry->file_type = 2;
-		
+
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
 		write(fd, block, block_size);
 	}
@@ -950,18 +948,19 @@ void func_mkdir(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 // ADICIONADO
 void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *nome)
 {
-	struct ext2_dir_entry_2 *entryTmp = malloc(sizeof(struct ext2_dir_entry_2));
-	struct ext2_inode *inodeTemp = malloc(sizeof(struct ext2_inode));
-	struct ext2_inode *inodeC = malloc(sizeof(struct ext2_inode));
+	struct ext2_dir_entry_2 *entryTmp = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
+	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
+	struct ext2_inode *inodeC = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 	char *nomeFinal;
 	int tamNome;
 	int arredondamento = 0;
 	int tamanho = 0;
 	int inodeVal = 0;
-	int existe = 0;
+	long existe = 0;
 
-	read_dir(fd, inode, group, &existe, nome);
-	if(existe != -1){
+	read_dir(inode, group, &existe, nome);
+	if (existe != -1)
+	{
 		printf("ARQUIVO JA EXISTENTE");
 		return;
 	}
@@ -975,20 +974,20 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 	printf("\n\n-----inodeVal: %d", inodeVal);
 
 	set_inode_bitmap(fd, group, (inodeVal - 1));
-	//write_inode(fd, inodeVal, group, inodeTemp);
-	// int blocktmp = find_free_block(fd, group);
-	// set_block_bitmap(fd, group, blocktmp);
+	// write_inode(fd, inodeVal, group, inodeTemp);
+	//  int blocktmp = find_free_block(fd, group);
+	//  set_block_bitmap(fd, group, blocktmp);
 
 	tamNome = strlen(nome);
-	arredondamento = roundLen(8+tamNome);
-	nomeFinal = malloc((tamNome + arredondamento) * sizeof(char));
+	arredondamento = roundLen(8 + tamNome);
+	nomeFinal = (char *)malloc((tamNome + arredondamento) * sizeof(char));
 	strcpy(nomeFinal, nome);
 	for (int i = 0; i < arredondamento; i++)
 	{
 		strcat(nomeFinal, "\0");
 	}
-	
-	//memcpy(nomeFinal, nome, sizeof(char) * tamNome);
+
+	// memcpy(nomeFinal, nome, sizeof(char) * tamNome);
 
 	int temp = getLastEntry(fd, inode, group);
 	tamNome = strlen(nome);
@@ -1011,28 +1010,28 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		read(fd, block, block_size); /* read block from disk*/
 
 		entry = (struct ext2_dir_entry_2 *)block;
-		entry = (void *)entry + temp;
+		
+		entry =  (ext2_dir_entry_2 *)((char *)entry + temp);
 		entry->rec_len = 8 + entry->name_len;
 		entry->rec_len = entry->rec_len + roundLen(entry->rec_len);
-		//memcpy(entry->name, "heuuo.txt", 9*sizeof(char));
+		// memcpy(entry->name, "heuuo.txt", 9*sizeof(char));
 
-		//entryTmp->inode = inodeVal;
-		//entryTmp->name_len = tamNome;
-		//entryTmp->rec_len = 8 + entryTmp->name_len;
-		//entryTmp->rec_len = entryTmp->rec_len + roundLen(entryTmp->rec_len);
-		//tamanho = entryTmp->rec_len;
-		//entryTmp->file_type = 1;
-		
-		
-		//memcpy(entryTmp->name, nomeFinal, entryTmp->name_len);
+		// entryTmp->inode = inodeVal;
+		// entryTmp->name_len = tamNome;
+		// entryTmp->rec_len = 8 + entryTmp->name_len;
+		// entryTmp->rec_len = entryTmp->rec_len + roundLen(entryTmp->rec_len);
+		// tamanho = entryTmp->rec_len;
+		// entryTmp->file_type = 1;
 
-		//memcpy(entryTmp, entry, sizeof(struct ext2_dir_entry_2));
-		//read_inode(fd, entry->inode, group, inodeC);
-		//printInode(inodeTemp);
-		//inodeTemp->i_mode = 33188;
-		//inodeTemp->i_size = 0;
-		//inodeTemp->i_gid = 0;
-		//inodeTemp->i_uid = 0;
+		// memcpy(entryTmp->name, nomeFinal, entryTmp->name_len);
+
+		// memcpy(entryTmp, entry, sizeof(struct ext2_dir_entry_2));
+		// read_inode(fd, entry->inode, group, inodeC);
+		// printInode(inodeTemp);
+		// inodeTemp->i_mode = 33188;
+		// inodeTemp->i_size = 0;
+		// inodeTemp->i_gid = 0;
+		// inodeTemp->i_uid = 0;
 		inodeTemp->i_block[0] = 0;
 		inodeTemp->i_block[1] = 0;
 		inodeTemp->i_block[2] = 0;
@@ -1049,7 +1048,7 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		inodeTemp->i_block[13] = 0;
 		inodeTemp->i_block[14] = 0;
 		inodeTemp->i_atime = 1668911917;
-		inodeTemp->i_blocks=0;
+		inodeTemp->i_blocks = 0;
 		inodeTemp->i_ctime = 1668911917;
 		inodeTemp->i_dir_acl = 0;
 		inodeTemp->i_dtime = 0;
@@ -1066,13 +1065,13 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		write_inode(fd, inodeVal, group, inodeTemp);
 
 		temp = temp + entry->rec_len;
-		entry = (void *)entry + entry->rec_len;
+		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
 		entry->inode = inodeVal;
 		entry->name_len = tamNome;
 		entry->rec_len = 1024 - temp;
-		memcpy(entry->name, nomeFinal, tamNome*sizeof(char));
+		memcpy(entry->name, nomeFinal, tamNome * sizeof(char));
 		entry->file_type = 1;
-		
+
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
 		write(fd, block, block_size);
 	}
@@ -1083,7 +1082,6 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 	free(inodeTemp);
 	free(entryTmp);
 }
-
 
 /* Copia os dados do arquivo com nome 'nome' para arquivoDest
 
