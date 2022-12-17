@@ -52,6 +52,7 @@ static struct ext2_super_block super;
 static int fd;
 // stack<ext2_inode> currentPath;
 vector<string> vetorCaminhoAtual;
+vector<ext2_dir_entry_2 *> vetorEntradasDir;
 int grupoAtual = 0;
 
 // Posiciona o leitor do arquivo em  (Inicio_Tabela_Inodes + Distancia_Inode_Desejado) bytes e lê o Inode desejado na variável Inode passada por parâmetro
@@ -91,7 +92,8 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int 
 {
 	void *block;
 	(*valorInode) = -1;
-	if (!strlen(nome)) *valorInode = -2;
+	if (!strlen(nome))
+		*valorInode = -2;
 	if (S_ISDIR(inode->i_mode))
 	{
 		struct ext2_dir_entry_2 *entry;
@@ -195,7 +197,8 @@ void constroiCaminho(struct ext2_inode *inode, struct ext2_group_desc *group, lo
 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
 		size += entry->rec_len;
 	}
-	if(!found) printf("Diretório não encontrado.\n");
+	if (!found)
+		printf("Diretório não encontrado.\n");
 	*valorInode = entry->inode;
 
 	free(block);
@@ -390,7 +393,7 @@ void printGroup(struct ext2_group_desc *group)
 void init_super(struct ext2_group_desc *group, struct ext2_inode *inode)
 {
 	// Abre a imagem do sistema de arquivos
-	if ((fd = open(FD_DEVICE, O_RDONLY)) < 0)
+	if ((fd = open(FD_DEVICE, O_RDWR)) < 0)
 	{
 		perror(FD_DEVICE);
 		exit(1);
@@ -437,7 +440,7 @@ int getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, c
 	{
 		return -1;
 	}
-	else if(valorInodeTmp == -2)
+	else if (valorInodeTmp == -2)
 	{
 		return -2;
 	}
@@ -622,11 +625,12 @@ void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *no
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 
 	int retorno = getArquivoPorNome(inode, group, nome, grupoAtual, inodeTemp, grupoTemp);
-	if (retorno == -1){
+	if (retorno == -1)
+	{
 		printf("Arquivo não encontrado\n");
 		return;
 	}
-	if(retorno == -2)
+	if (retorno == -2)
 	{
 		printf("Sintax incorreta\n");
 		return;
@@ -816,8 +820,8 @@ void funct_ls(struct ext2_inode *inode, struct ext2_group_desc *group)
 			printf("%s\n", file_name);
 			printf("inode: %u\n", entry->inode);
 			printf("record length: %u\n", entry->rec_len);
-			printf("record length: %u\n", entry->name_len);
-			printf("record length: %u\n", entry->file_type);
+			printf("name length: %u\n", entry->name_len);
+			printf("file type: %u\n", entry->file_type);
 			printf("\n");
 			// printf("%s", nometmp);
 			entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
@@ -828,15 +832,306 @@ void funct_ls(struct ext2_inode *inode, struct ext2_group_desc *group)
 	}
 }
 
+// void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int *valorInode, char *nome)
+// unsigned int referenciasArquivo(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, ext2_dir_entry_2 **entryArquivo)
+// {
+// 	printf("\n------------ ReferenciasArquivo -------------\n");
+
+// 	void *block;
+
+// 	struct ext2_dir_entry_2 *entry;
+// 	unsigned int size = 0;
+
+// 	if ((block = malloc(block_size)) == NULL)
+// 	{
+// 		fprintf(stderr, "Memory error\n");
+// 		close(fd);
+// 		exit(1);
+// 	}
+
+// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+// 	read(fd, block, block_size);
+
+// 	entry = (struct ext2_dir_entry_2 *)block;
+
+// 	while ((size < inode->i_size) && entry->inode)
+// 	{
+// 		char file_name[EXT2_NAME_LEN + 1];
+// 		memcpy(file_name, entry->name, entry->name_len);
+// 		file_name[entry->name_len] = 0;
+
+// 		printf("\nentry->name: %s\n", entry->name);
+// 		printf("\nentry->rec_len: %hu\n", entry->rec_len);
+// 		printf("\nsize: %u\n", size);
+
+// 		if (!strcmp(nomeArquivo, file_name))
+// 		{
+// 			printf("\nAchou o arquivo %s\n", file_name);
+
+// 			// Erro ao ler a entrada
+// 			void *blockEntry = malloc(entry->rec_len);
+
+// 			printf("\nsize: %u\n", size);
+
+// 			lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + size, SEEK_SET);
+// 			read(fd, blockEntry, entry->rec_len);
+
+// 			struct ext2_dir_entry_2 *teste = (struct ext2_dir_entry_2 *)blockEntry;
+
+// 			// *entryArquivo = (struct ext2_dir_entry_2 *)blockEntry;
+
+// 			printf("\nEntrada que será modificada:");
+// 			// printf("\nentry->name: %s", (*entryArquivo)->name);
+// 			// printf("\nentry->rec_len: %u", (*entryArquivo)->rec_len);
+// 			printf("\nentry->name: %s", teste->name);
+// 			printf("\nentry->rec_len: %u", teste->rec_len);
+
+// 			size += entry->rec_len;
+// 			printf("\nRetornando para 'partida' %u\n", size);
+
+// 			return size;
+// 		}
+// 		// printf("%s", nometmp);
+// 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
+// 		size += entry->rec_len;
+// 	}
+
+// 	free(block);
+// }
+
+// void moverEntradas(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned int partida, unsigned int deslocamento)
+// {
+// 	printf("\n------------- INICIO - moverEntradas ----------------\n");
+
+// 	void *restoLista = malloc(1024 - partida);
+
+// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + partida, SEEK_SET);
+// 	read(fd, restoLista, 1024 - partida);
+
+// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + partida + deslocamento, SEEK_SET);
+// 	write(fd, restoLista, 1024 - partida);
+
+// 	printf("\n------------- FIM - moverEntradas ----------------\n");
+// }
+
+// unsigned int converteParaMult4(unsigned int tamanho)
+// {
+// 	printf("\n-------------- converteParaMult4 ----------------\n");
+
+// 	int qtdDe4 = tamanho / 4;
+// 	int emTermosde4 = qtdDe4 * 4;
+
+// 	printf("\nRetornando %u\n", emTermosde4 + 4);
+
+// 	return (emTermosde4 + 4);
+// }
+
+// // Rename
+// void funct_rename(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, char *novoNome)
+// {
+// 	// Vamos fazer o rename de arquivos. Para isso, precisamos considerar a lista de nomes que o diretório que con-
+// 	// tém esse arquivo possui. Podemos aumentar, diminuir ou até deixar um nome do mesmo tamanho. Devemos atualizar
+// 	// apenas a lista de entries do diretório que contém o arquivo? Se é assim, ao renomear, devemos mudar a posição
+// 	// de todos elementos depois do arquivo renomeado para frente, para que as coisas sejam mantidas contíguas.
+
+// 	// Vamo renomear o arquivo hello.txt
+
+// 	printf("\n---------------- INICIO - funct_rename ----------------\n");
+
+// 	struct ext2_dir_entry_2 *entryArquivo = (ext2_dir_entry_2 *)malloc(sizeof(ext2_dir_entry_2 *));
+
+// 	unsigned int partida = referenciasArquivo(inode, group, nomeArquivo, &entryArquivo);
+
+// 	unsigned int desloc = converteParaMult4(strlen(novoNome)) - converteParaMult4(strlen(nomeArquivo));
+
+// 	printf("\ndesloc: %u\n", desloc);
+
+// 	moverEntradas(inode, group, partida, desloc);
+
+// 	// Atualiza o arquivo com a renomeação e mudança de tamanhos, e escreve as mudanças
+
+// 	int lenNovoNome = strlen(novoNome) + 1;
+
+// 	printf("\nlenNovoNome: %d\n", lenNovoNome);
+
+// 	printf("\nentryArquivo->name: %s\n", entryArquivo->name);
+
+// 	printf("\nnovoNome: %s\n", novoNome);
+
+// 	printf("\nmemcpy...\n");
+
+// 	memcpy(entryArquivo->name, novoNome, lenNovoNome);
+
+// 	printf("\nentryArquivo->name: %s\n", entryArquivo->name);
+
+// 	entryArquivo->name[lenNovoNome - 1] = '\0';
+
+// 	printf("\nentryArquivo->name: %s\n", entryArquivo->name);
+
+// 	entryArquivo->name_len = lenNovoNome;
+
+// 	// casos:
+// 	// se lenNovoNome = 11 -> qtdDe4 = 11 / 4 = 2; emTermosde4 = 2 * 4 = 8;
+// 	// se lenNovoNome = 13 -> qtdDe4 = 13 / 4 = 3; emTermosde4 = 3 * 4 = 12;
+
+// 	entryArquivo->rec_len = converteParaMult4(lenNovoNome);
+
+// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + (partida - (8 + lenNovoNome)), SEEK_SET);
+// 	write(fd, entryArquivo, entryArquivo->rec_len);
+
+// 	printf("\n---------------- FIM - funct_rename ----------------\n");
+// }
+
+// construirVetorDiretorios(){
+
+// }
+
+void constroiListaDiretorios(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, int *posArquivo)
+{
+	void *block;
+
+	struct ext2_dir_entry_2 *entry;
+	unsigned int size = 0;
+
+	if ((block = malloc(block_size)) == NULL)
+	{ /* allocate memory for the data block */
+		fprintf(stderr, "Memory error\n");
+		close(fd);
+		exit(1);
+	}
+
+	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+	read(fd, block, block_size); /* read block from disk*/
+
+	entry = (struct ext2_dir_entry_2 *)block; /* first entry in the directory */
+											  /* Notice that the list may be terminated with a NULL
+												 entry (entry->inode == NULL)*/
+	int contador = 0;
+	while ((size < inode->i_size) && entry->inode)
+	{
+		printf("\nopa\n");
+		struct ext2_dir_entry_2 *proxEntry = (struct ext2_dir_entry_2 *)malloc(sizeof(ext2_dir_entry_2));
+		proxEntry = entry;
+
+		char file_name[EXT2_NAME_LEN + 1];
+		memcpy(file_name, entry->name, entry->name_len);
+		file_name[entry->name_len] = 0;
+
+		if (!strcmp(nomeArquivo, file_name))
+		{
+			*posArquivo = contador;
+		}
+
+		vetorEntradasDir.push_back(proxEntry);
+
+		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
+		size += entry->rec_len;
+		contador++;
+	}
+
+	free(block);
+
+	return;
+}
+
+unsigned int converteParaMult4(unsigned int tamanho)
+{
+	int qtdDe4 = tamanho / 4;
+	int emTermosde4 = qtdDe4 * 4;
+
+	printf("\nRetornando %u\n", emTermosde4 + 4);
+
+	return (emTermosde4 + 4);
+}
+
+void removeAtualizaListaDiretorios(struct ext2_inode *inode, struct ext2_group_desc *group, char *novoNomeArquivo, char *nomeArquivo, int pos)
+{
+	struct ext2_dir_entry_2 *entry_dir_modificado = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
+
+	entry_dir_modificado->inode = vetorEntradasDir[pos]->inode;
+	entry_dir_modificado->file_type = vetorEntradasDir[pos]->file_type;
+	strcpy(entry_dir_modificado->name, novoNomeArquivo);
+
+	int lenNovoNomeArquivo = strlen(novoNomeArquivo);
+
+	entry_dir_modificado->name_len = lenNovoNomeArquivo;
+	entry_dir_modificado->rec_len = converteParaMult4(lenNovoNomeArquivo) + 8;
+
+	for (auto i = vetorEntradasDir.begin(); i != vetorEntradasDir.end(); ++i)
+	{
+		if (*i == vetorEntradasDir[pos])
+		{
+			vetorEntradasDir.erase(i);
+		}
+	}
+
+	vetorEntradasDir.push_back(entry_dir_modificado);
+
+	vetorEntradasDir[vetorEntradasDir.size() - 1]->rec_len = converteParaMult4(lenNovoNomeArquivo) - converteParaMult4(strlen(nomeArquivo));
+
+	return;
+}
+
+void atualizaListaReal(struct ext2_inode *inode, struct ext2_group_desc *group)
+{
+	void *block;
+
+	struct ext2_dir_entry_2 *entry;
+	unsigned int size = 0;
+
+	if ((block = malloc(block_size)) == NULL)
+	{ /* allocate memory for the data block */
+		fprintf(stderr, "Memory error\n");
+		close(fd);
+		exit(1);
+	}
+
+	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
+	read(fd, block, block_size); /* read block from disk*/
+
+	entry = (struct ext2_dir_entry_2 *)block; /* first entry in the directory */
+											  /* Notice that the list may be terminated with a NULL
+												 entry (entry->inode == NULL)*/
+
+	unsigned int offset_entry = 0;
+
+	for (int i = 0; i < vetorEntradasDir.size(); i++)
+	{
+		lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + offset_entry, SEEK_SET);
+		write(fd, vetorEntradasDir[i], vetorEntradasDir[i]->rec_len); /* read block from disk*/
+
+		offset_entry += vetorEntradasDir[i]->rec_len;
+	}
+
+	free(block);
+
+	return;
+}
+
+void funct_rename(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, char *novoNomeArquivo)
+{
+	// Agora temos outra ideia: vamos criar um vetor que conterá as entradas do diretório. A entrada que queremos
+	// modificar removemos do vetor. Criamos uma entrada com o que queremos e colocamos no vetor, no final. Disto,
+	// mandamos os elementos do vetor para o bloco[].
+
+	int posArquivo;
+
+	constroiListaDiretorios(inode, group, nomeArquivo, &posArquivo);
+
+	removeAtualizaListaDiretorios(inode, group, novoNomeArquivo, nomeArquivo, posArquivo);
+
+	atualizaListaReal(inode, group);
+}
+
 //
 char *caminhoAtual(vector<string> caminhoVetor)
 {
 	char *caminho = (char *)calloc(100, sizeof(char));
 
-	//if (caminhoVetor.empty())
+	// if (caminhoVetor.empty())
 	//{
 	//	strcat(caminho, "/");
-	//}
+	// }
 
 	for (long unsigned int i = 0; i < caminhoVetor.size(); i++)
 	{
@@ -883,6 +1178,10 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 
 		printf("\n%s\n", caminhoPwd);
 	}
+	else if (!strcmp(comandoPrincipal, "rename"))
+	{
+		funct_rename(inode, group, comandoInteiro[1], comandoInteiro[2]);
+	}
 	else
 	{
 		printf("Erro: Comando não suportado\n");
@@ -896,15 +1195,17 @@ int main(void)
 	struct ext2_group_desc group;
 	struct ext2_inode inode;
 
-	char *entrada = (char *)malloc(100 * sizeof(char));		  // Comando enviado pelo terminal
-	char **argumentos = (char **)malloc(10 * sizeof(char *)); // Lista de strings/argumentos do comando
-	char *token;											  // Cada parte do comando;
-	int numeroArgumentos = 0;								  // Número de partes do comando
+	char *entrada = (char *)malloc(100 * sizeof(char));		 // Comando enviado pelo terminal
+	char **argumentos = (char **)malloc(3 * sizeof(char *)); // Lista de strings/argumentos do comando
+	char *token;											 // Cada parte do comando;
+	int indexArgumentos = 0;								 // Número de partes do comando
+	int numeroArgumentos = 0;
 
 	init_super(&group, &inode);
 
 	while (1)
 	{
+		indexArgumentos = 0;
 		numeroArgumentos = 0;
 
 		char prompt[100] = "";
@@ -922,13 +1223,15 @@ int main(void)
 
 		free(caminhoAbsoluto);
 
+		entrada[strcspn(entrada, "\n")] = 0; // Consome o '\n' que o readline coloca;
+
 		if (!strcmp(entrada, "")) // Reinicia o processo de entrada se nenhum comando for digitado;
 		{
 			continue;
 		}
 
-		entrada[strcspn(entrada, "\n")] = 0; // Consome o '\n' que o readline coloca;
-		add_history(entrada);				 // Acrescenta o comando no histórico;
+		// entrada[strcspn(entrada, "\n")] = 0; // Consome o '\n' que o readline coloca;
+		add_history(entrada); // Acrescenta o comando no histórico;
 
 		token = strtok(entrada, " ");
 		if (!(strcasecmp(token, "exit"))) // Sai quando for digitado exit;
@@ -936,17 +1239,21 @@ int main(void)
 			return 0;
 		}
 
-		argumentos[numeroArgumentos] = (char *)malloc(30 * sizeof(char));
-		argumentos[numeroArgumentos] = token;
+		argumentos[indexArgumentos] = (char *)malloc(50 * sizeof(char));
+		argumentos[indexArgumentos] = token;
+		;
+
+		numeroArgumentos++;
 
 		token = strtok(NULL, " ");
 
 		while (token != NULL)
 		{
-			numeroArgumentos += 1;
+			indexArgumentos++;
+			numeroArgumentos++;
 
-			argumentos[numeroArgumentos] = (char *)malloc(30 * sizeof(char));
-			argumentos[numeroArgumentos] = token;
+			argumentos[indexArgumentos] = (char *)malloc(50 * sizeof(char));
+			argumentos[indexArgumentos] = token;
 
 			token = strtok(NULL, " ");
 		}
@@ -957,12 +1264,7 @@ int main(void)
 			exit(1);
 		}
 
-		for (int i = 0; i < numeroArgumentos; i++)
-		{
-			free(argumentos[i]);
-		}
-
-		// printf("\n");
+		free(argumentos[0]);
 	}
 
 	exit(0);
