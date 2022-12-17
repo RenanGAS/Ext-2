@@ -2,10 +2,6 @@ CC=g++ -Wall
 
 PROGS=super
 
-SUPER=super
-
-CLEAN=clean
-
 all: $(PROGS)
 
 clean:
@@ -18,3 +14,7 @@ debug:
 	$(CC) ext2super.cpp -o super -lreadline
 	./super
 	rm -f $(PROGS)
+
+backup:
+	rm -f ./myext2image.img
+	cp ./imagem/myext2image.img ./
