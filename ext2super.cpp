@@ -818,11 +818,21 @@ int roundLen(int tamanho)
 }
 
 // PAREI AQUI
-void func_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome)
+void rewriteSuperAndGroup(struct ext2_group_desc* group, int gropNum)
+{
+	lseek(fd, BASE_OFFSET + block_size + sizeof(struct ext2_group_desc) * gropNum, SEEK_SET);
+	write(fd, group, sizeof(struct ext2_group_desc));
+
+	lseek(fd, BASE_OFFSET, SEEK_SET);
+	write(fd, &super, sizeof(struct ext2_super_block));
+}
+
+void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int numGrupo)
 {
 	struct ext2_dir_entry_2 *entryTmp = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 	struct ext2_inode *inodeC = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
+
 	void *producedBlock;
 	struct ext2_dir_entry_2 *producedEntry;
 
@@ -835,6 +845,7 @@ void func_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 	int blockVal = 0;
 
 	read_dir(inode, group, &existe, nome);
+	
 	if (existe != -1)
 	{
 		printf("ARQUIVO JA EXISTENTE");
@@ -855,34 +866,35 @@ void func_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 		strcat(nomeFinal, "\0");
 	}
 
-	producedEntry = (struct ext2_dir_entry_2 *)malloc(block_size);
-	// producedEntry = (struct ext2_dir_entry_2 *)producedBlock;
+	producedBlock = malloc(block_size);
+	producedEntry = (struct ext2_dir_entry_2 *)producedBlock;
+	producedEntry = (ext2_dir_entry_2 *)((char *)producedEntry + 0);
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 1;
 	producedEntry->rec_len = 12;
 	memcpy(producedEntry->name, ".\0\0\0", 4);
-	producedEntry->inode = 2;
+	producedEntry->inode = inodeVal;
 
 	producedEntry = (ext2_dir_entry_2 *)((char *)producedEntry + producedEntry->rec_len);
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 2;
-	producedEntry->rec_len = 12;
+	producedEntry->rec_len = 1012;
 	memcpy(producedEntry->name, "..\0\0", 4);
 	producedEntry->inode = 2;
 
-	producedEntry = (ext2_dir_entry_2 *)((char *)producedEntry + producedEntry->rec_len);
+	/*producedEntry = (void *)producedEntry + producedEntry->rec_len;
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 2;
 	producedEntry->rec_len = 1000;
 	memcpy(producedEntry->name, "...\0", 4);
-	producedEntry->inode = 2;
+	producedEntry->inode = 2;*/
 
 	blockVal = find_free_block(fd, group) + 1;
 	printf("\n\n-----BlockVal: %d\n", blockVal);
 
 	set_block_bitmap(group, (blockVal - 1));
 	lseek(fd, BLOCK_OFFSET(blockVal), SEEK_SET);
-	write(fd, producedEntry, block_size);
+	write(fd, producedBlock, block_size);
 
 	int temp = getLastEntry(inode, group);
 	// tamNome = strlen(nome);
@@ -905,6 +917,11 @@ void func_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 		read(fd, block, block_size); /* read block from disk*/
 
 		entry = (struct ext2_dir_entry_2 *)block;
+
+		// memcpy(producedBlock, entry, block_size);
+		// lseek(fd, BLOCK_OFFSET(blockVal), SEEK_SET);
+		// write(fd, producedBlock, block_size);
+
 		entry = (ext2_dir_entry_2 *)((char *)entry + temp);
 		entry->rec_len = 8 + entry->name_len;
 		entry->rec_len = entry->rec_len + roundLen(entry->rec_len);
@@ -953,15 +970,19 @@ void func_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 		write(fd, block, block_size);
 	}
 
+	group->bg_free_blocks_count = group->bg_free_blocks_count - 1;
 	super.s_free_blocks_count = super.s_free_blocks_count - 1;
+
+	group->bg_free_inodes_count = group->bg_free_inodes_count - 1;
 	super.s_free_inodes_count = super.s_free_inodes_count - 1;
+
+	rewriteSuperAndGroup(group, numGrupo);
 
 	free(inodeTemp);
 	free(entryTmp);
 }
 
-// ADICIONADO
-void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *nome)
+void funct_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual)
 {
 	struct ext2_dir_entry_2 *entryTmp = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
@@ -974,7 +995,7 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 	long existe = 0;
 
 	read_dir(inode, group, &existe, nome);
-	if (existe != -1)
+	if (existe != 0)
 	{
 		printf("ARQUIVO JA EXISTENTE");
 		return;
@@ -1025,7 +1046,6 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		read(fd, block, block_size); /* read block from disk*/
 
 		entry = (struct ext2_dir_entry_2 *)block;
-
 		entry = (ext2_dir_entry_2 *)((char *)entry + temp);
 		entry->rec_len = 8 + entry->name_len;
 		entry->rec_len = entry->rec_len + roundLen(entry->rec_len);
@@ -1091,8 +1111,10 @@ void func_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group,
 		write(fd, block, block_size);
 	}
 
-	super.s_free_blocks_count = super.s_free_blocks_count - 1;
+	group->bg_free_inodes_count = group->bg_free_inodes_count - 1;
 	super.s_free_inodes_count = super.s_free_inodes_count - 1;
+
+	rewriteSuperAndGroup(group, grupoAtual);
 
 	free(inodeTemp);
 	free(entryTmp);
@@ -1455,16 +1477,16 @@ void atualizaListaReal(struct ext2_inode *inode, struct ext2_group_desc *group)
 	unsigned int size = 0;
 
 	if ((block = malloc(block_size)) == NULL)
-	{ 
+	{
 		fprintf(stderr, "Memory error\n");
 		close(fd);
 		exit(1);
 	}
 
 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-	read(fd, block, block_size); 
+	read(fd, block, block_size);
 
-	entry = (struct ext2_dir_entry_2 *)block; 
+	entry = (struct ext2_dir_entry_2 *)block;
 
 	unsigned int offset_entry = 0;
 
@@ -1562,6 +1584,10 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	else if (!strcmp(comandoPrincipal, "cp"))
 	{
 		funct_cp(inode, group, comandoInteiro[1], &grupoAtual, comandoInteiro[2]);
+	}
+	else if (!strcmp(comandoPrincipal, "mkdir"))
+	{
+		funct_mkdir(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else
 	{
