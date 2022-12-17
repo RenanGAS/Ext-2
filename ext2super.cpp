@@ -16,6 +16,7 @@
 #include "ext2.h"
 #include <string.h>
 #include <time.h>
+#include <fstream>
 
 // Shell
 
@@ -494,12 +495,7 @@ int getArquivoPorNome(struct ext2_inode *inode, struct ext2_group_desc *group, c
 // Copia o conteúdo dos blocos de dados em inode para arquivo
 void copiaArquivo(struct ext2_inode *inode, char *arquivo)
 {
-	char* destino = (char*) malloc(2 + strlen(arquivo));
-	strcat(destino, "./");
-	strcat(destino, arquivo);
-	FILE *destineFile = fopen(destino, "w");
-
-	printf("\na\n");
+	ofstream destineFile(arquivo);
 
 	// Aloca um bloco
 	char *buffer = (char *)malloc(sizeof(char) * block_size);
@@ -525,10 +521,10 @@ void copiaArquivo(struct ext2_inode *inode, char *arquivo)
 		{
 			// Copia o caracter i para charLido
 			charLido = buffer[i];
-			printf("\na\n");
+
 			// Escreve charLido em arquivo
-			fputc(charLido, destineFile);
-			printf("\na\n");
+			destineFile << charLido;
+
 			// Decrementa sizeTemp que marca quantos bytes do Inode restam para serem lidos
 			sizeTemp = sizeTemp - sizeof(char);
 
@@ -557,7 +553,7 @@ void copiaArquivo(struct ext2_inode *inode, char *arquivo)
 			for (int j = 0; j < 1024; j++)
 			{
 				charLido = buffer[j];
-				fputc(charLido, destineFile);
+				destineFile << charLido;
 				sizeTemp = sizeTemp - 1;
 				if (sizeTemp <= 0)
 				{
@@ -600,7 +596,7 @@ void copiaArquivo(struct ext2_inode *inode, char *arquivo)
 				for (int j = 0; j < 1024; j++)
 				{
 					charLido = buffer[j];
-					fputc(charLido, destineFile);
+					destineFile << charLido;
 					sizeTemp = sizeTemp - 1;
 					if (sizeTemp <= 0)
 					{
