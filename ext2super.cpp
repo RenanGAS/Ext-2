@@ -832,160 +832,6 @@ void funct_ls(struct ext2_inode *inode, struct ext2_group_desc *group)
 	}
 }
 
-// void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int *valorInode, char *nome)
-// unsigned int referenciasArquivo(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, ext2_dir_entry_2 **entryArquivo)
-// {
-// 	printf("\n------------ ReferenciasArquivo -------------\n");
-
-// 	void *block;
-
-// 	struct ext2_dir_entry_2 *entry;
-// 	unsigned int size = 0;
-
-// 	if ((block = malloc(block_size)) == NULL)
-// 	{
-// 		fprintf(stderr, "Memory error\n");
-// 		close(fd);
-// 		exit(1);
-// 	}
-
-// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]), SEEK_SET);
-// 	read(fd, block, block_size);
-
-// 	entry = (struct ext2_dir_entry_2 *)block;
-
-// 	while ((size < inode->i_size) && entry->inode)
-// 	{
-// 		char file_name[EXT2_NAME_LEN + 1];
-// 		memcpy(file_name, entry->name, entry->name_len);
-// 		file_name[entry->name_len] = 0;
-
-// 		printf("\nentry->name: %s\n", entry->name);
-// 		printf("\nentry->rec_len: %hu\n", entry->rec_len);
-// 		printf("\nsize: %u\n", size);
-
-// 		if (!strcmp(nomeArquivo, file_name))
-// 		{
-// 			printf("\nAchou o arquivo %s\n", file_name);
-
-// 			// Erro ao ler a entrada
-// 			void *blockEntry = malloc(entry->rec_len);
-
-// 			printf("\nsize: %u\n", size);
-
-// 			lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + size, SEEK_SET);
-// 			read(fd, blockEntry, entry->rec_len);
-
-// 			struct ext2_dir_entry_2 *teste = (struct ext2_dir_entry_2 *)blockEntry;
-
-// 			// *entryArquivo = (struct ext2_dir_entry_2 *)blockEntry;
-
-// 			printf("\nEntrada que será modificada:");
-// 			// printf("\nentry->name: %s", (*entryArquivo)->name);
-// 			// printf("\nentry->rec_len: %u", (*entryArquivo)->rec_len);
-// 			printf("\nentry->name: %s", teste->name);
-// 			printf("\nentry->rec_len: %u", teste->rec_len);
-
-// 			size += entry->rec_len;
-// 			printf("\nRetornando para 'partida' %u\n", size);
-
-// 			return size;
-// 		}
-// 		// printf("%s", nometmp);
-// 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
-// 		size += entry->rec_len;
-// 	}
-
-// 	free(block);
-// }
-
-// void moverEntradas(struct ext2_inode *inode, struct ext2_group_desc *group, unsigned int partida, unsigned int deslocamento)
-// {
-// 	printf("\n------------- INICIO - moverEntradas ----------------\n");
-
-// 	void *restoLista = malloc(1024 - partida);
-
-// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + partida, SEEK_SET);
-// 	read(fd, restoLista, 1024 - partida);
-
-// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + partida + deslocamento, SEEK_SET);
-// 	write(fd, restoLista, 1024 - partida);
-
-// 	printf("\n------------- FIM - moverEntradas ----------------\n");
-// }
-
-// unsigned int converteParaMult4(unsigned int tamanho)
-// {
-// 	printf("\n-------------- converteParaMult4 ----------------\n");
-
-// 	int qtdDe4 = tamanho / 4;
-// 	int emTermosde4 = qtdDe4 * 4;
-
-// 	printf("\nRetornando %u\n", emTermosde4 + 4);
-
-// 	return (emTermosde4 + 4);
-// }
-
-// // Rename
-// void funct_rename(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, char *novoNome)
-// {
-// 	// Vamos fazer o rename de arquivos. Para isso, precisamos considerar a lista de nomes que o diretório que con-
-// 	// tém esse arquivo possui. Podemos aumentar, diminuir ou até deixar um nome do mesmo tamanho. Devemos atualizar
-// 	// apenas a lista de entries do diretório que contém o arquivo? Se é assim, ao renomear, devemos mudar a posição
-// 	// de todos elementos depois do arquivo renomeado para frente, para que as coisas sejam mantidas contíguas.
-
-// 	// Vamo renomear o arquivo hello.txt
-
-// 	printf("\n---------------- INICIO - funct_rename ----------------\n");
-
-// 	struct ext2_dir_entry_2 *entryArquivo = (ext2_dir_entry_2 *)malloc(sizeof(ext2_dir_entry_2 *));
-
-// 	unsigned int partida = referenciasArquivo(inode, group, nomeArquivo, &entryArquivo);
-
-// 	unsigned int desloc = converteParaMult4(strlen(novoNome)) - converteParaMult4(strlen(nomeArquivo));
-
-// 	printf("\ndesloc: %u\n", desloc);
-
-// 	moverEntradas(inode, group, partida, desloc);
-
-// 	// Atualiza o arquivo com a renomeação e mudança de tamanhos, e escreve as mudanças
-
-// 	int lenNovoNome = strlen(novoNome) + 1;
-
-// 	printf("\nlenNovoNome: %d\n", lenNovoNome);
-
-// 	printf("\nentryArquivo->name: %s\n", entryArquivo->name);
-
-// 	printf("\nnovoNome: %s\n", novoNome);
-
-// 	printf("\nmemcpy...\n");
-
-// 	memcpy(entryArquivo->name, novoNome, lenNovoNome);
-
-// 	printf("\nentryArquivo->name: %s\n", entryArquivo->name);
-
-// 	entryArquivo->name[lenNovoNome - 1] = '\0';
-
-// 	printf("\nentryArquivo->name: %s\n", entryArquivo->name);
-
-// 	entryArquivo->name_len = lenNovoNome;
-
-// 	// casos:
-// 	// se lenNovoNome = 11 -> qtdDe4 = 11 / 4 = 2; emTermosde4 = 2 * 4 = 8;
-// 	// se lenNovoNome = 13 -> qtdDe4 = 13 / 4 = 3; emTermosde4 = 3 * 4 = 12;
-
-// 	entryArquivo->rec_len = converteParaMult4(lenNovoNome);
-
-// 	lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + (partida - (8 + lenNovoNome)), SEEK_SET);
-// 	write(fd, entryArquivo, entryArquivo->rec_len);
-
-// 	printf("\n---------------- FIM - funct_rename ----------------\n");
-// }
-
-// construirVetorDiretorios(){
-
-// }
-
 void constroiListaDiretorios(struct ext2_inode *inode, struct ext2_group_desc *group, char *nomeArquivo, int *posArquivo)
 {
 	void *block;
@@ -1009,7 +855,6 @@ void constroiListaDiretorios(struct ext2_inode *inode, struct ext2_group_desc *g
 	int contador = 0;
 	while ((size < inode->i_size) && entry->inode)
 	{
-		printf("\nopa\n");
 		struct ext2_dir_entry_2 *proxEntry = (struct ext2_dir_entry_2 *)malloc(sizeof(ext2_dir_entry_2));
 		proxEntry = entry;
 
@@ -1039,8 +884,6 @@ unsigned int converteParaMult4(unsigned int tamanho)
 	int qtdDe4 = tamanho / 4;
 	int emTermosde4 = qtdDe4 * 4;
 
-	printf("\nRetornando %u\n", emTermosde4 + 4);
-
 	return (emTermosde4 + 4);
 }
 
@@ -1055,19 +898,33 @@ void removeAtualizaListaDiretorios(struct ext2_inode *inode, struct ext2_group_d
 	int lenNovoNomeArquivo = strlen(novoNomeArquivo);
 
 	entry_dir_modificado->name_len = lenNovoNomeArquivo;
-	entry_dir_modificado->rec_len = converteParaMult4(lenNovoNomeArquivo) + 8;
+
+	int contador = 0;
+	unsigned short recLenDirs = 0;
 
 	for (auto i = vetorEntradasDir.begin(); i != vetorEntradasDir.end(); ++i)
 	{
+		if (contador >= vetorEntradasDir.size())
+		{
+			break;
+		}
+
+		contador++;
+
 		if (*i == vetorEntradasDir[pos])
 		{
 			vetorEntradasDir.erase(i);
 		}
+		else
+		{
+			recLenDirs += (*i)->rec_len;
+			// printf("\nnome: %s, recLenDirs: %hu\n", (*i)->name, recLenDirs);
+		}
 	}
 
-	vetorEntradasDir.push_back(entry_dir_modificado);
+	entry_dir_modificado->rec_len = recLenDirs;
 
-	vetorEntradasDir[vetorEntradasDir.size() - 1]->rec_len = converteParaMult4(lenNovoNomeArquivo) - converteParaMult4(strlen(nomeArquivo));
+	vetorEntradasDir.push_back(entry_dir_modificado);
 
 	return;
 }
@@ -1095,10 +952,21 @@ void atualizaListaReal(struct ext2_inode *inode, struct ext2_group_desc *group)
 
 	unsigned int offset_entry = 0;
 
+	printf("\nrec_len final: %hu\n", vetorEntradasDir[6]->rec_len);
+
 	for (int i = 0; i < vetorEntradasDir.size(); i++)
 	{
 		lseek(fd, BLOCK_OFFSET(inode->i_block[0]) + offset_entry, SEEK_SET);
-		write(fd, vetorEntradasDir[i], vetorEntradasDir[i]->rec_len); /* read block from disk*/
+		write(fd, vetorEntradasDir[i], vetorEntradasDir[i]->rec_len);
+
+		// if (i == vetorEntradasDir.size() - 1)
+		// {
+		// 	write(fd, vetorEntradasDir[i], 1024 - vetorEntradasDir[i]->rec_len); /* read block from disk*/
+		// }
+		// else
+		// {
+		// 	write(fd, vetorEntradasDir[i], vetorEntradasDir[i]->rec_len); /* read block from disk*/
+		// }
 
 		offset_entry += vetorEntradasDir[i]->rec_len;
 	}
@@ -1119,6 +987,8 @@ void funct_rename(struct ext2_inode *inode, struct ext2_group_desc *group, char 
 	constroiListaDiretorios(inode, group, nomeArquivo, &posArquivo);
 
 	removeAtualizaListaDiretorios(inode, group, novoNomeArquivo, nomeArquivo, posArquivo);
+
+	printf("\n%s %hu\n", vetorEntradasDir[0]->name, vetorEntradasDir[0]->rec_len);
 
 	atualizaListaReal(inode, group);
 }
