@@ -53,8 +53,8 @@ using namespace std;
 static struct ext2_super_block super;		 // Superbloco
 static int fd;								 // Descritor da imagem do sistema de arquivos
 vector<string> vetorCaminhoAtual;			 // Caminho de diretórios atual
-vector<ext2_dir_entry_2 *> vetorEntradasDir; //
-int grupoAtual = 0;
+vector<ext2_dir_entry_2 *> vetorEntradasDir; // Vetor auxiliar para renomeação de arquivos
+int grupoAtual = 0;							 // Variável auxiliar para armazenar o valor do Grupo de blocos atual
 
 // ADICIONADO
 void read_inode_bitmap(int fd, struct ext2_group_desc *group);
