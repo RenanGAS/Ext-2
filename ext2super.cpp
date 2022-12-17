@@ -845,7 +845,7 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	int blockVal = 0;
 
 	read_dir(inode, group, &existe, nome);
-	
+
 	if (existe != -1)
 	{
 		printf("ARQUIVO JA EXISTENTE");
@@ -982,7 +982,7 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	free(entryTmp);
 }
 
-void funct_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual)
+void funct_touch(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual)
 {
 	struct ext2_dir_entry_2 *entryTmp = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
@@ -995,7 +995,8 @@ void funct_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group
 	long existe = 0;
 
 	read_dir(inode, group, &existe, nome);
-	if (existe != 0)
+	
+	if (existe != -1)
 	{
 		printf("ARQUIVO JA EXISTENTE");
 		return;
@@ -1016,7 +1017,7 @@ void funct_touch(int fd, struct ext2_inode *inode, struct ext2_group_desc *group
 
 	tamNome = strlen(nome);
 	arredondamento = roundLen(8 + tamNome);
-	nomeFinal = (char *)malloc((tamNome + arredondamento) * sizeof(char));
+	nomeFinal = (char *) malloc((tamNome + arredondamento) * sizeof(char));
 	strcpy(nomeFinal, nome);
 	for (int i = 0; i < arredondamento; i++)
 	{
@@ -1588,6 +1589,10 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	else if (!strcmp(comandoPrincipal, "mkdir"))
 	{
 		funct_mkdir(inode, group, comandoInteiro[1], grupoAtual);
+	}
+	else if (!strcmp(comandoPrincipal, "touch"))
+	{
+		funct_touch(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else
 	{
