@@ -117,7 +117,7 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int 
 
 			if (!strcmp(nome, file_name))
 			{
-				printf("\n%s\n", file_name);
+				// printf("\n%s\n", file_name);
 				*valorInode = entry->inode;
 				break;
 			}
@@ -1370,7 +1370,7 @@ void unset_inode_bitmap(struct ext2_group_desc *group, int bitVal)
 
 void funct_rmdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual)
 {
-	printf("\n\n---rm---\n");
+	printf("\n\n---rmdir---\n");
 	int achado = 0;
 	int numGrupo = grupoAtual;
 	int terminou = 0;
@@ -1390,7 +1390,12 @@ void funct_rmdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	printf("VALOR INODE TEMP %d", valorInodeTmp);
 	if (valorInodeTmp == -1)
 	{
-		printf("ARQUIVO NÃO ENCONTRADO");
+		printf("Arquivo não encontrado\n");
+		return;
+	}
+	if (S_ISDIR(inodeTemp->i_mode) == 0)
+	{
+		printf("Erro: Não é um diretório\n");
 		return;
 	}
 
@@ -1438,7 +1443,7 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 	read_dir(inodeTemp, grupoTemp, &valorInodeTmp, nome);
 	if (valorInodeTmp == -1)
 	{
-		printf("ARQUIVO NÃO ENCONTRADO");
+		printf("Arquivo não encontrado\n");
 		return;
 	}
 
@@ -1449,6 +1454,11 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 	unsigned int index = valorInodeTmp % super.s_inodes_per_group;
 	read_inode(index, grupoTemp, inodeTemp);
 	numblocos = inodeTemp->i_blocks;
+	if (S_ISDIR(inodeTemp->i_mode))
+	{
+		printf("Erro: É um diretório\n");
+		return;
+	}
 	printInode(inodeTemp);
 	unsigned int *singleInd = (unsigned int *)malloc(sizeof(unsigned int) * 256);
 	unsigned int *doubleInd = (unsigned int *)malloc(sizeof(unsigned int) * 256);
@@ -1510,7 +1520,12 @@ void funct_cp(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 
-	getArquivoPorNome(inode, group, nome, grupoAtual, inodeTemp, grupoTemp);
+	int retorno = getArquivoPorNome(inode, group, nome, grupoAtual, inodeTemp, grupoTemp);
+	if (retorno == -1)
+	{
+		printf("Arquivo não encontrado\n");
+		return;
+	}
 
 	copiaArquivo(inodeTemp, arquivoDest);
 
@@ -1554,11 +1569,6 @@ void funct_cat(struct ext2_inode *inode, struct ext2_group_desc *group, char *no
 	if (retorno == -1)
 	{
 		printf("Arquivo não encontrado\n");
-		return;
-	}
-	if (retorno == -2)
-	{
-		printf("Sintax incorreta\n");
 		return;
 	}
 
@@ -1627,7 +1637,12 @@ void funct_attr(struct ext2_inode *inode, struct ext2_group_desc *group, char *n
 {
 	struct ext2_group_desc *grupoTemp = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
-	getArquivoPorNome(inode, group, nome, &grupoAtual, inodeTemp, grupoTemp);
+	int retorno = getArquivoPorNome(inode, group, nome, &grupoAtual, inodeTemp, grupoTemp);
+	if (retorno == -1)
+	{
+		printf("Arquivo não encontrado\n");
+		return;
+	}
 	char is_file = '-';
 	char user_read, user_write, user_exec;
 	char group_read, group_write, group_exec;
@@ -1928,31 +1943,61 @@ char *caminhoAtual(vector<string> caminhoVetor)
 comandoPrincipal: identificador do comando
 comandoInteiro: sintaxe inteira do comando
 */
-int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_inode *inode, struct ext2_group_desc *group)
+int executarComando(char *comandoPrincipal, int num_argumentos, char **comandoInteiro, struct ext2_inode *inode, struct ext2_group_desc *group)
 {
 	if (!strcmp(comandoPrincipal, "info"))
 	{
 		// Exibe informações do disco e do sistema de arquivos
+		if (num_argumentos != 1)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_info();
 	}
 	else if (!strcmp(comandoPrincipal, "cat"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_cat(inode, group, comandoInteiro[1], &grupoAtual);
 	}
 	else if (!strcmp(comandoPrincipal, "attr"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_attr(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else if (!strcmp(comandoPrincipal, "cd"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_cd(inode, group, &grupoAtual, comandoInteiro[1]);
 	}
 	else if (!strcmp(comandoPrincipal, "ls"))
 	{
+		if (num_argumentos != 1)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_ls(inode, group);
 	}
 	else if (!strcmp(comandoPrincipal, "pwd"))
 	{
+		if (num_argumentos != 1)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		char *caminhoPwd;
 		caminhoPwd = caminhoAtual(vetorCaminhoAtual);
 
@@ -1960,31 +2005,61 @@ int executarComando(char *comandoPrincipal, char **comandoInteiro, struct ext2_i
 	}
 	else if (!strcmp(comandoPrincipal, "rename"))
 	{
+		if (num_argumentos != 3)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_rename(inode, group, comandoInteiro[1], comandoInteiro[2]);
 	}
 	else if (!strcmp(comandoPrincipal, "cp"))
 	{
+		if (num_argumentos != 3)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_cp(inode, group, comandoInteiro[1], &grupoAtual, comandoInteiro[2]);
 	}
 	else if (!strcmp(comandoPrincipal, "mkdir"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_mkdir(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else if (!strcmp(comandoPrincipal, "touch"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_touch(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else if (!strcmp(comandoPrincipal, "rm"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_rm(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else if (!strcmp(comandoPrincipal, "rmdir"))
 	{
+		if (num_argumentos != 2)
+		{
+			printf("Sintaxe inválida\n");
+			return 1;
+		}
 		funct_rmdir(inode, group, comandoInteiro[1], grupoAtual);
 	}
 	else
 	{
-		printf("Erro: Comando não suportado\n");
+		printf("Erro: Não é um comando suportado\n");
 	}
 
 	return 0;
@@ -2057,8 +2132,8 @@ int main(void)
 
 			token = strtok(NULL, " ");
 		}
-
-		if (executarComando(argumentos[0], argumentos, &inode, &group) == -1)
+		int num_argumentos = indexArgumentos + 1;
+		if (executarComando(argumentos[0], num_argumentos, argumentos, &inode, &group) == -1)
 		{
 			printf("\nErro\n");
 			exit(1);
