@@ -1,6 +1,7 @@
 Para a compilação: 
 
-    Deve ser compilado o arquivo nEXT2shell.cpp com a utilização do argumento '-lreadline' para uso da respectiva biblioteca.
+    Deve ser compilado o arquivo nEXT2shell.cpp com a utilização do argumento '-lreadline' para uso da 
+    respectiva biblioteca.
 
 Para a execução:
 
