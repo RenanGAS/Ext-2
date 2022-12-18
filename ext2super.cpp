@@ -125,6 +125,7 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int 
 			// printf("%10u %s\n", entry->inode, file_name);
 			if (!strcmp(nome, file_name))
 			{
+				printf("\n%s\n", file_name);
 				*valorInode = entry->inode;
 				break;
 			}
@@ -833,6 +834,11 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 	struct ext2_inode *inodeC = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 
+	// Adição
+	struct ext2_group_desc *groupDest = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	lseek(fd, BASE_OFFSET + block_size + sizeof(struct ext2_group_desc) * 0, SEEK_SET);
+	read(fd, groupDest, sizeof(struct ext2_group_desc));
+
 	void *producedBlock;
 	struct ext2_dir_entry_2 *producedEntry;
 
@@ -844,6 +850,9 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	long existe = 0;
 	int blockVal = 0;
 
+	// Adição
+	long inodeAtual = 0;
+
 	read_dir(inode, group, &existe, nome);
 
 	if (existe != -1)
@@ -852,10 +861,13 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 		return;
 	}
 
-	inodeVal = find_free_inode(group) + 1;
+	// Adição
+	read_dir(inode, group, &inodeAtual, ".");
+
+	inodeVal = find_free_inode(groupDest) + 1;
 	printf("\n\n-----inodeVal: %d\n", inodeVal);
 
-	set_inode_bitmap(group, (inodeVal - 1));
+	set_inode_bitmap(groupDest, (inodeVal - 1));
 
 	tamNome = strlen(nome);
 	arredondamento = roundLen(8 + tamNome);
@@ -868,6 +880,7 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 
 	producedBlock = malloc(block_size);
 	producedEntry = (struct ext2_dir_entry_2 *)producedBlock;
+
 	producedEntry = (ext2_dir_entry_2 *)((char *)producedEntry + 0);
 	producedEntry->file_type = 2;
 	producedEntry->name_len = 1;
@@ -880,7 +893,7 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	producedEntry->name_len = 2;
 	producedEntry->rec_len = 1012;
 	memcpy(producedEntry->name, "..\0\0", 4);
-	producedEntry->inode = 2;
+	producedEntry->inode = inodeAtual;
 
 	/*producedEntry = (void *)producedEntry + producedEntry->rec_len;
 	producedEntry->file_type = 2;
@@ -889,10 +902,10 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	memcpy(producedEntry->name, "...\0", 4);
 	producedEntry->inode = 2;*/
 
-	blockVal = find_free_block(fd, group) + 1;
+	blockVal = find_free_block(fd, groupDest) + 1;
 	printf("\n\n-----BlockVal: %d\n", blockVal);
 
-	set_block_bitmap(group, (blockVal - 1));
+	set_block_bitmap(groupDest, (blockVal - 1));
 	lseek(fd, BLOCK_OFFSET(blockVal), SEEK_SET);
 	write(fd, producedBlock, block_size);
 
@@ -956,7 +969,7 @@ void funct_mkdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 		inodeTemp->i_mtime = 1668911978;
 		inodeTemp->i_size = 1024;
 		inodeTemp->i_uid = 0;
-		write_inode(inodeVal, group, inodeTemp);
+		write_inode(inodeVal, groupDest, inodeTemp);
 
 		temp = temp + entry->rec_len;
 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
@@ -986,6 +999,12 @@ void funct_touch(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 {
 	struct ext2_dir_entry_2 *entryTmp = (struct ext2_dir_entry_2 *)malloc(sizeof(struct ext2_dir_entry_2));
 	struct ext2_inode *inodeTemp = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
+	
+	// Adição
+	struct ext2_group_desc *groupDest = (struct ext2_group_desc *)malloc(sizeof(struct ext2_group_desc));
+	lseek(fd, BASE_OFFSET + block_size + sizeof(struct ext2_group_desc) * 0, SEEK_SET);
+	read(fd, groupDest, sizeof(struct ext2_group_desc));
+
 	struct ext2_inode *inodeC = (struct ext2_inode *)malloc(sizeof(struct ext2_inode));
 	char *nomeFinal;
 	int tamNome;
@@ -993,6 +1012,9 @@ void funct_touch(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	int tamanho = 0;
 	int inodeVal = 0;
 	long existe = 0;
+
+	// Adição
+	int grupoTmp = -1;
 
 	read_dir(inode, group, &existe, nome);
 
@@ -1098,7 +1120,9 @@ void funct_touch(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 		inodeTemp->i_mtime = 1668911917;
 		inodeTemp->i_size = 0;
 		inodeTemp->i_uid = 0;
-		write_inode(inodeVal, group, inodeTemp);
+
+		// Edição
+		write_inode(inodeVal, groupDest, inodeTemp);
 
 		temp = temp + entry->rec_len;
 		entry = (ext2_dir_entry_2 *)((char *)entry + entry->rec_len);
@@ -1115,7 +1139,8 @@ void funct_touch(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 	group->bg_free_inodes_count = group->bg_free_inodes_count - 1;
 	super.s_free_inodes_count = super.s_free_inodes_count - 1;
 
-	rewriteSuperAndGroup(group, grupoAtual);
+	// Edição
+	rewriteSuperAndGroup(groupDest, 0);
 
 	free(inodeTemp);
 	free(entryTmp);
@@ -1416,6 +1441,7 @@ void funct_rmdir(struct ext2_inode *inode, struct ext2_group_desc *group, char *
 void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nome, int grupoAtual)
 {
 	printf("\n\n---rm---\n");
+	int contador = 0;
 	int achado = 0;
 	int numGrupo = grupoAtual;
 	int terminou = 0;
@@ -1427,6 +1453,7 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 	memcpy(grupoTemp, group, sizeof(struct ext2_group_desc));
 	memcpy(inodeTemp, inode, sizeof(struct ext2_inode));
 	// grupoTemp = group;
+
 	read_dir(inodeTemp, grupoTemp, &valorInodeTmp, nome);
 	if (valorInodeTmp == -1)
 	{
@@ -1435,7 +1462,9 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 	}
 
 	// printf("TROCOU DE GRUPO");
-	trocaGrupo(&valorInodeTmp, grupoTemp, &numGrupo);
+	unsigned int block_group = ((valorInodeTmp)-1) / super.s_inodes_per_group;
+	lseek(fd, BASE_OFFSET + block_size + sizeof(struct ext2_group_desc) * block_group, SEEK_SET);
+	read(fd, group, sizeof(struct ext2_group_desc));
 	unsigned int index = valorInodeTmp % super.s_inodes_per_group;
 	read_inode(index, grupoTemp, inodeTemp);
 	numblocos = inodeTemp->i_blocks;
@@ -1452,6 +1481,7 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 		unset_block_bitmap(grupoTemp, inodeTemp->i_block[i]);
 		rewriteSuperAndGroup(grupoTemp, numGrupo);
 		fileSize -= block_size;
+		contador++;
 	}
 
 	lseek(fd, BLOCK_OFFSET(inodeTemp->i_block[12]), SEEK_SET);
@@ -1462,6 +1492,7 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 		unset_block_bitmap(grupoTemp, singleInd[i]);
 		rewriteSuperAndGroup(grupoTemp, numGrupo);
 		fileSize -= block_size;
+		contador++;
 	}
 
 	lseek(fd, BLOCK_OFFSET(inodeTemp->i_block[13]), SEEK_SET);
@@ -1476,6 +1507,7 @@ void funct_rm(struct ext2_inode *inode, struct ext2_group_desc *group, char *nom
 			unset_block_bitmap(grupoTemp, singleInd[k]);
 			rewriteSuperAndGroup(grupoTemp, numGrupo);
 			fileSize -= block_size;
+			contador++;
 		}
 	}
 
@@ -1895,10 +1927,10 @@ char *caminhoAtual(vector<string> caminhoVetor)
 {
 	char *caminho = (char *)calloc(100, sizeof(char));
 
-	// if (caminhoVetor.empty())
-	//{
-	//	strcat(caminho, "/");
-	// }
+	if (caminhoVetor.empty())
+	{
+		strcat(caminho, "/");
+	}
 
 	for (long unsigned int i = 0; i < caminhoVetor.size(); i++)
 	{
@@ -2004,7 +2036,7 @@ int main(void)
 
 		strcat(prompt, caminhoAbsoluto);
 
-		strcat(prompt, "/]$> ");
+		strcat(prompt, "]$> ");
 
 		entrada = readline(prompt);
 
