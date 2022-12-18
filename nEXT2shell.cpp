@@ -117,7 +117,6 @@ void read_dir(struct ext2_inode *inode, struct ext2_group_desc *group, long int 
 
 			if (!strcmp(nome, file_name))
 			{
-				// printf("\n%s\n", file_name);
 				*valorInode = entry->inode;
 				break;
 			}
