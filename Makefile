@@ -1,18 +1,18 @@
 CC=g++ -Wall
 
-PROGS=super
+PROGS=nEXT2shell
 
 all: $(PROGS)
 
 clean:
 	rm -f $(PROGS)
 
-super: ext2super.cpp ext2.h
-	$(CC) ext2super.cpp -o super -lreadline
+nEXT2shell: nEXT2shell.cpp nEXT2shell.h
+	$(CC) nEXT2shell.cpp -o nEXT2shell -lreadline
 
 debug:
-	$(CC) ext2super.cpp -o super -lreadline
-	./super
+	$(CC) nEXT2shell.cpp -o nEXT2shell -lreadline
+	./nEXT2shell
 	rm -f $(PROGS)
 
 backup:
